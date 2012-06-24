@@ -1,0 +1,11 @@
+Changes
+lib/MP3IndexerService.pm
+LICENSE
+Makefile.PL
+MANIFEST
+mp3submit4index.pl
+README
+sql/config.sql
+sql/schema.sql
+t/MP3IndexerService.t
+META.yml                                 Module meta-data (added by MakeMaker)

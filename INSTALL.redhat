@@ -1,0 +1,96 @@
+RED HAT/CENTOS INSTALL
+
+1) Install MySQL & Helios Database Schema
+
+If you don't already have a MySQL server installed, you can install it with:
+
+	yum groupinstall "MySQL Database"
+
+If you already have a MySQL server up and running that you want to use on 
+another server, you can just install the MySQL client:
+
+	yum install mysql
+
+Once you have your MySQL server up and running (there are plenty of 
+instructions for that elsewhere on the Web), use the sql/helios_schema.sql 
+to create a database schema for Helios to use.  Uncomment and edit the lines 
+that create the 'helios' user to set an appropriate password.  Once the schema
+file is ready, issue the following command to create the helios_db schema and 
+helios user:
+
+    mysql -u root -p < sql/helios_schema.sql
+
+You'll be prompted for your MySQL root password, then your helios_db schema 
+will be created.
+
+
+2) Install Perl RPM dependencies
+
+As root or via sudo, issue the following command to install the XML::Simple
+parser:
+
+	yum install perl-XML-Simple
+
+
+3) Install Helios & dependencies
+
+Edit the helios.ini to set the MySQL datasource name, username, and password.  
+Also set the pid_path parameter to a location Helios can write PID files to.
+
+Next, set the HELIOS_INI environment variable to point to the helios.ini file:
+
+    export HELIOS_INI=/path/to/helios.ini
+
+Make sure to use an absolute path!
+
+Now that the Helios configuration is set, use the CPAN shell to install the 
+remaining Helios dependencies and Helios itself.  As root or via sudo, issue
+the following commands:
+
+	perl -MCPAN -eshell
+	install Data::ObjectDriver
+	install TheSchwartz
+	install Error
+	install Test::Simple
+	install Pod::Usage
+	install Config::IniFiles
+	install Helios
+
+You may also want to try using the CPAN Helios bundle specifically for Red Hat-
+based systems:
+
+	perl -MCPAN -eshell
+	install Bundle::Helios::RedHat
+
+	
+4) Install Apache HTTP Server (optional)
+
+If you want to submit jobs to Helios via HTTP, you'll need a web server with 
+built-in CGI support.  The most obvious choice is the Apache HTTP Server, which 
+you can install with:
+
+    yum install httpd
+
+You'll need to edit your Apache configuration to enable mod_cgi.  Once your 
+Apache server is configured, install the submitJob.pl program as a CGI program 
+by issue these commands as root or via sudo:
+
+    cp cgi-bin/submitJob.pl /var/www/cgi-bin
+	chown root.root /var/www/cgi-bin/submitJob.pl
+	chmod a+rx /var/www/cgi-bin/submitJob.pl
+	
+You'll also need to edit your Apache configuration to add the HELIOS_INI env var
+so submitJob.pl can find the helios.ini file; use the SetEnv directive in your 
+Apache configuration for this:
+
+    SetEnv HELIOS_INI /path/to/helios.ini
+
+
+5) Install Helios::Panoptes (optional)
+
+Helios::Panoptes is the central web-based administration tool for Helios.  You 
+will only need to install it on one host.  Panoptes is packaged separately and 
+has its own installation instructions; refer its README for instructions.
+
+
+	

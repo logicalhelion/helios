@@ -1,0 +1,177 @@
+Revision history for Perl extension Helios.
+2.41  Sun Jun 03 22:00:00 2012
+	-Official Oracle support!  DDL for a Helios Oracle schema is in 
+	 'sql/helios_schema_oracle.sql'.  Please note: 
+	 1) you will need to adjust the Oracle schema to fit your 
+	    environment (especially in regards to security and tablespaces)
+	 2) while the Helios core supports Oracle, the Helios::Panoptes 
+	    web admin interface still only supports MySQL (Panoptes 
+	    support for Oracle is being worked on) 
+	-Helios::Service and Helios::Job: added deferredJob() and 
+	 deferred() methods to defer processing of a job even though it 
+	 was available in the job queue.  These methods (for now) simply 
+	 expose the declined() feature added in TheSchwartz 1.10; no Helios
+	 job history is recorded for a deferred job.  Existing Helios 
+	 users will need to upgrade their TheSchwartz library to 1.10 to 
+	 use this feature.
+	-Helios::Logger & Helios::Logger::Internal:  moved driver 
+	 creation to base Helios::Logger class so (if necessary) any 
+	 loggers can get a Data::ObjectDriver to the collective database
+	-Helios::Service & Helios::Logger:  refactored getDriver() into 
+	 initDriver() and getDriver() to eventually allow caching of 
+	 Data::ObjectDriver objects.  Anything needing an ObjectDriver to 
+	 the collective database should just continue to call getDriver() 
+	 and everything will work fine.
+	-helios.pl: calls the service class prep() method on startup 
+	 rather than getConfigFromIni() and getConfigFromDb() separately.
+	 This ensures proper setup of the loggers and Data::ObjectDriver 
+	 db connection.
+	-helios.pl: changed startup message so perl doesn't carp a warning 
+	 if the service class doesn't have a $VERSION defined.
+	-helios.pl: added registration_interval as a configuration 
+	 parameter (previously it was hard-coded to 300 seconds in 
+	 helios.pl).  The "registration_interval" parameter is the amount 
+	 of time (in secs) between service daemon "collective check-ins" 
+	 (when a service daemon records its current status in the 
+	 HELIOS_WORKER_REGISTRY_TB table).  This table is used to create 
+	 the Helios::Panoptes Collective Admin page, and is also useful 
+	 for system monitoring and statistics.
+	-helios.pl: set new defaults for zero_sleep_interval (10) and 
+	 registration_interval (60).  These new defaults should make 
+	 Helios more responsive in low load situations and generally work 
+	 better for more users out-of-the-box.  (The old defaults geared 
+	 Helios more for large volumes of long-running jobs on heavily
+	 loaded databases.  The new defaults should work for a better 
+	 range of small- to mid-sized loads.)  If these new defaults 
+	 create too much traffic for your database, you can set new 
+	 larger values in your helios.ini file to decrease database 
+	 traffic.
+	-helios.pl: changes to prevent a worker from transmuting to a new 
+	 service daemon (caused by database instability during transition 
+	 between helios.pl, TheSchwartz->work(), and Helios::Service->work() 
+	-updated tests
+	-submitJob.pl:  fixed example in POD
+	-Removed Bundle::Helios::RedHat.  Ultimately, it didn't work any 
+	 better (or worse) than using 'install Helios' command with the 
+	 CPAN shell.  Bundle::Helios::Generic seems to work well on other 
+	 platforms, however.  If you wish to use Helios with RHEL/CentOS 
+	 5.x or earlier, it is recommended you install a more recent 
+	 version of Perl than 5.8.8 for ease of installation reasons.  
+2.40  Sun Jan 22 22:30:00 2012
+	-NEW Extensible logging subsystem (Helios::Logger) 
+	-NEW Helios::Error::BaseError exception class; acts as parent for
+	 entire Helios::Error:: hierarchy
+	-NEW Helios::Service->metarun() method to modularize metajob 
+	 handling and provide for extensible metajob support 
+	-NEW service run() and metarun() methods now run in an eval 
+	 block as a process safety measure to catch uncaught exceptions.
+	-NEW MP3IndexerService example application including in eg/
+	 directory (StubService also rewritten for clarity)
+	-REVISED Helios::Service->work() method no longer pays attention 
+	 to return value of run() method (this feature was under-
+	 documented, misunderstood, and caused problems with eval {} and 
+	 Try::Tiny exception handling
+	-REWRITTEN submitJob.pl CGI script; supports sending XML stream 
+	 in addition to form encoding, no longer dependent on 
+	 HELIOS_CLASS_MAP
+	-REWRITTEN Helios::TestService; more modern Perl and easier to 
+	 understand
+	-REWRITTEN install instructions, including specific instructions 
+	 for Red Hat- and Ubuntu-based systems, and including CPAN install 
+     bundles (still experimental)
+    -REWRITTEN Helios::Tutorial 
+    -Helios::Service:  fixed MaxRetries() and RetryInterval() retry 
+     job methods
+	-Helios::Job:  changed failed() and failedNoRetry() to limit the 
+	 char length of the error recorded to 254 chars.  That's one less 
+	 than the default size of the db field in the ERROR table, so it 
+	 should prevent long errors like stack traces from unexpectedly 
+	 blowing up worker processes and potentially losing jobs.
+	-Revised dependencies:
+	 DBI 1.52 (shipped with RHEL/CentOS 5)
+	 XML::Simple 2.14 (shipped with RHEL/CentOS 5)
+	 Removed XML::SAX dependency (unnecessary)
+	 Removed XML::Namespace dependency (unnecessary)
+	 Removed XML::Parser dependency (unnecessary)
+	-Removed deprecated classes, methods, and other files:
+	 Helios::Service->parseArgXML() (deprecated since 2.00)
+	 Helios::Worker (deprecated since 2.00)
+	 sql/helios_schema_20upgrade.sql	 
+	-Updated copyright notices
+	-Switch to "Linux-style" versioning: 
+	 odd minor version == development version
+	 even minor version == stable version
+	 second minor number == patch level
+	 (we're still also using Perl-style _ for devel versions too)
+2.23  Fri Sep 10 12:22:00 2010
+	-Helios::Job: fixed bug where getArgXML() returned undef if job
+	 object was vivified from job queue
+2.22  Thu May 21 11:30:00 2009
+	-Helios::Service: fixed a bug in getFuncidFromDb() that caused 
+	 services to fail to load properly if there was no entry for them 
+	 in FUNCMAP table.
+	-helios.pl: Several revisions to make it a more robust daemon. Now
+	 honors TERM signal; 'kill <pid>' from a shell will attempt to 
+	 safely shut down workers and daemon process w/o using Panoptes
+	-Documentation updates
+2.21  Thu May 14 17:00:00 2009
+	-added set/getJob() accessors to facilitate access to current 
+	 Helios::Job object from methods other than run()
+2.20  Tue Apr 28 18:00:00 2009
+    -various tweaks for cross-platform compatibility
+    -documentation additions/corrections
+    -added Helios::LogEntry::Levels to remove dependencies on 
+     Sys::Syslog
+    -helios.pl: Cleaned up messages to console after daemonize
+	-helios.pl + Helios::Service: added support for WORKER_MAX_TTL 
+	 config param
+    -Helios::Service: added JobClass() allow extensible Helios::Job 
+     classes
+    -Helios::Service: added MaxRetries() and RetryInterval() to replace
+     TheSchwartz's max_retries() and retry_interval() (this is not an 
+     abitrary change; it's to allow for extensions at the Helios layer 
+     in the future)
+    -Helios::Service: added default run() method for class completeness
+     (it throws a Helios::Error::FatalNoRetry error because you forgot 
+     to implement a run() method)
+    -Helios::Service: removed logging to syslogd to eliminate 
+     Sys::Syslog dependency (see HeliosX::ExtLoggerService)
+    -Helios::Service: added set/getFuncid(), getFuncidFromDb() and 
+     changed jobWaiting() to use them.  This eliminates an unnecessary 
+     database query previously done every time jobsWaiting() was called
+    -Helios::Service: added support for log_priority_threshold config 
+     param
+    -Helios::Job: added getFailures() to access the number of times a 
+     job has previously failed
+2.00  Fri Aug 01 02:00:00 2008
+	-First public production release (same as 1.90_26 w/more documentation)
+1.90_26 Thu Jun 26 11:30:00 2008
+	-Helios 2.0 RC1
+	-NEW Helios 2.0 API
+	 Helios::Service
+	 Helios::Job
+	 Helios::MetajobBurstService
+	 Helios::ConfigParam
+	 Helios::JobHistory
+	 Helios::LogEntry
+	 Helios::TestService
+	-helios.pl: added PID check to prevent 2 instances of a service 
+	 running on the same server
+	-helios.pl: added --clear-halt option to clear Worker Admin HALTs 
+	 at the cmd line
+	-helios.sql: new helios_worker_registry_tb.start_time field for 
+	 uptime stats
+	-submitJob.pl, helios_job_submit.pl, helios_job_clean.pl use new 
+	 2.0 API
+	-eg/Stub/StubService.pm for example of new 2.0 API service class
+	-new tests to test both 1.x and 2.x API	
+1.19_07 Thu May 29 14:00:00 2008
+	-added Helios.pm (for version checking & documentation)
+	-added Helios::Job (for eventual refactoring)
+	-added Helios::Test (for system testing)
+1.19_06 Wed May 28 12:00:00 2008
+	-added LICENSE file that was left out
+	-add helios_log_clean.pl utility to clean log, job history
+	-added eg/Stub/StubWorker.pm as a worker class stub example
+1.19  Mon May 19 12:00:00 2008
+	-First public release
