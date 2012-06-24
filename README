@@ -1,5 +1,17 @@
-Helios version 2.40
+Helios version 2.41
 ===================
+
+Helios is a system for building asynchronous distributed job processing 
+applications.  Applications that need to process millions of small units of 
+work in parallel can use the Helios system to scale this work across the 
+multiple processes and servers that form a Helios collective.  Helios may also 
+be used to improve the user experience on websites.  By utilizing the 
+framework's APIs, potential timeout issues can be eliminated and response times 
+decreased for larger tasks invoked in response to user input.  The web server 
+application can "fire and forget" in the background, immediately returning 
+control to the user.  Using Helios, simple Perl applications can be written 
+to distribute massive workloads throughout the Helios collective while 
+still retaining centralized management.
 
 INSTALLATION
 
