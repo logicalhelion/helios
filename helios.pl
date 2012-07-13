@@ -11,13 +11,14 @@ use POSIX;
 
 use Error qw(:try);
 use Sys::Hostname;
-use TheSchwartz;
+#[]old use TheSchwartz;
 
 use Helios;
 use Helios::Error;
 use Helios::LogEntry::Levels qw(:all);
+use Helios::TheSchwartz;
 
-our $VERSION = '2.41';
+our $VERSION = '2.50_2830';
 
 =head1 NAME
 
@@ -227,7 +228,8 @@ our %DEFAULTS = (
     MASTER_LAUNCH_INTERVAL => 1,
     ZERO_LAUNCH_INTERVAL => 10,
     ZERO_SLEEP_INTERVAL => 10,
-    REGISTRATION_INTERVAL => 60
+    REGISTRATION_INTERVAL => 60,
+    WORKER_BLITZ_FACTOR => 1
 );
 our $CLEAN_SHUTDOWN = 1;				# used to determine if we should remove the PID file or not (at least for now)
 
@@ -252,6 +254,8 @@ our $ZERO_SLEEP_LOG_LAST = 0;
 our $WORKER_PROCESS = 0;				# used to indicate process has become a worker process
 										# this is used in addition to getppid() to prevent workers
 										# from becoming daemons in case of database instability
+
+our $WORKER_BLITZ_FACTOR = 1;			# used to determine how many workers to launch
 
 # print help if asked
 if ( !defined($CLASS) || ($CLASS eq '--help') || ($CLASS eq '-h') ) {
@@ -327,10 +331,16 @@ if ( defined($params->{registration_interval}) ) {
 } else {
 	$REGISTRATION_INTERVAL = $DEFAULTS{REGISTRATION_INTERVAL};
 }
+if ( defined($params->{worker_blitz_factor}) ) {
+	$WORKER_BLITZ_FACTOR = $params->{worker_blitz_factor};
+} else {
+	$WORKER_BLITZ_FACTOR = $DEFAULTS{WORKER_BLITZ_FACTOR};
+}
 
 if ($DEBUG_MODE) { 
 	print "MASTER LAUNCH INTERVAL: $MASTER_LAUNCH_INTERVAL\n"; 
 	print "ZERO LAUNCH INTERVAL: $ZERO_LAUNCH_INTERVAL\n"; 
+	print "WORKER BLITZ FACTOR: $WORKER_BLITZ_FACTOR\n";	#[]?
 }
 
 my %workers;
@@ -506,7 +516,8 @@ MAIN_LOOP:{
 				my $workers_to_launch = $max_workers - $running_workers;
 				# if the number of waiting jobs is less than max workers
 				# then only launch one worker to reduce worker contention
-				if ( ($workers_to_launch > 0) && ($waiting_jobs < $max_workers) ) {
+#[]old				if ( ($workers_to_launch > 0) && ($waiting_jobs < $max_workers) ) {
+				if ( ($workers_to_launch > 0) && ($waiting_jobs < ($max_workers * $WORKER_BLITZ_FACTOR ) ) ) {
 					$workers_to_launch = 1;
 				}
 				$worker->logMsg(LOG_NOTICE, "$waiting_jobs jobs waiting; $running_workers workers running; launching $workers_to_launch workers");
@@ -647,6 +658,7 @@ sub daemonize {
     # but I'll put them in for perlipc's sake anyway
     open STDIN, '/dev/null';
     open STDOUT, '>/dev/null';
+    open STDERR, '>/dev/null';	#[]?
     
 	my $pid = fork;   
 	# make sure fork was successful
@@ -671,9 +683,10 @@ sub daemonize {
 	# session and making our own process group
 	# as well as closing any standard open filehandles.
 	POSIX::setsid();
-	close (STDIN); 
-	close (STDOUT); 
-	close (STDERR);
+#[] I may have changed religions on this one
+#	close (STDIN); 
+#	close (STDOUT); 
+#	close (STDERR);
 
 	# set up signal handling in main process 
 }
@@ -723,7 +736,8 @@ sub launch_worker {
     # just in case this would cause a problem in worker process
     $SIG{CHLD} = 'DEFAULT';
     $SIG{TERM} = 'DEFAULT';
-	my $client = TheSchwartz->new(databases => $DATABASES_INFO);
+#[]old	my $client = TheSchwartz->new(databases => $DATABASES_INFO);
+	my $client = Helios::TheSchwartz->new(databases => $DATABASES_INFO);
 	$client->can_do($worker_class);
 	my $return;
 	if ( defined($params->{OVERDRIVE}) && $params->{OVERDRIVE} == 1 ) {

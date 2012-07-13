@@ -19,7 +19,7 @@ helios_log_clean.pl
 INSTALL
 INSTALL.redhat
 INSTALL.ubuntu
-lib/Bundle/Helios/Generic.pm
+lib/Bundle/Helios.pm
 lib/Helios.pm
 lib/Helios/ConfigParam.pm
 lib/Helios/Error.pm
@@ -37,8 +37,10 @@ lib/Helios/LogEntry/Levels.pm
 lib/Helios/Logger.pm
 lib/Helios/Logger/Internal.pm
 lib/Helios/MetajobBurstService.pm
+lib/Helios/ObjectDriver/DBI.pm
 lib/Helios/Service.pm
 lib/Helios/TestService.pm
+lib/Helios/TheSchwartz.pm
 lib/Helios/Tutorial.pod
 LICENSE
 Makefile.PL

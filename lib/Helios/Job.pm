@@ -6,14 +6,17 @@ use warnings;
 
 use DBI;
 use Error qw(:try);
-use TheSchwartz;
-use TheSchwartz::Job;
+#[]old use TheSchwartz;
+#[]old use TheSchwartz::Job;
+use Helios::TheSchwartz;
+use Helios::ObjectDriver::DBI;
+
 require XML::Simple;
 
 use Helios::Error;
 use Helios::JobHistory;
 
-our $VERSION = '2.41';
+our $VERSION = '2.50_2830';
 
 our $D_OD_RETRIES = 3;
 our $D_OD_RETRY_INTERVAL = 5;
@@ -499,7 +502,8 @@ sub submit {
 
 	my $args = [ $params ];
 
-	my $client = TheSchwartz->new( databases => $databases, verbose => 1 );
+#[]old	my $client = TheSchwartz->new( databases => $databases, verbose => 1 );
+	my $client = Helios::TheSchwartz->new( databases => $databases, verbose => 1 );
 	my $sjh = $client->insert($job_class, $args);
 	$self->setJobid($sjh->jobid);
 	return $sjh->jobid;
@@ -587,7 +591,8 @@ sub initDriver {
 	my $self = shift;
 	my $config = $self->getConfig();
 	if ($self->debug) { print $config->{dsn},$config->{user},$config->{password},"\n"; }
-	my $driver = Data::ObjectDriver::Driver::DBI->new(
+#[]old	my $driver = Data::ObjectDriver::Driver::DBI->new(
+	my $driver = Helios::ObjectDriver::DBI->new(
 	    dsn      => $config->{dsn},
 	    username => $config->{user},
 	    password => $config->{password}
@@ -605,7 +610,7 @@ __END__
 
 =head1 SEE ALSO
 
-L<Helios::Service>, L<Helios::Error>, L<TheSchwartz::Job>, L<XML::Simple>, L<Config::IniFiles>
+L<Helios>, L<Helios::Service>, L<TheSchwartz::Job>, L<XML::Simple>
 
 =head1 AUTHOR
 

@@ -1,4 +1,14 @@
 Revision history for Perl extension Helios.
+2.50_2850  Wed Jul 11 23:36:00 2012  
+	-Helios::TheSchwartz and Helios::ObjectDriver::DBI added to 
+	 implement DBI-level database connection caching.  
+	 Helios::Service, Helios::Logger, and Helios::Job and helios.pl 
+	 have been changed to use the new connection handling scheme.
+	-Changed Bundle::Helios::Generic to Bundle::Helios (since the 
+	 RedHat-specific bundle has been eliminated).
+	-helios.pl: added worker_blitz_factor configuration parameter to 
+	 allow MAX_WORKERS workers to launch before there are that many 
+	 jobs available in the job queue.
 2.41  Sun Jun 03 22:00:00 2012
 	-Official Oracle support!  DDL for a Helios Oracle schema is in 
 	 'sql/helios_schema_oracle.sql'.  Please note: 

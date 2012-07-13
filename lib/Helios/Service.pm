@@ -8,7 +8,8 @@ use File::Spec;
 use Sys::Hostname;
 use Config::IniFiles;
 use DBI;
-use Data::ObjectDriver::Driver::DBI;
+#[]old use Data::ObjectDriver::Driver::DBI;
+use Helios::ObjectDriver::DBI;
 use Error qw(:try);
 require XML::Simple;
 
@@ -18,7 +19,7 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.41';
+our $VERSION = '2.50_2830';
 
 =head1 NAME
 
@@ -708,7 +709,8 @@ sub initDriver {
 	my $self = shift;
 	my $config = $self->getConfig();
 	if ($self->debug) { print $config->{dsn},$config->{user},$config->{password},"\n"; }
-	my $driver = Data::ObjectDriver::Driver::DBI->new(
+#[]old	my $driver = Data::ObjectDriver::Driver::DBI->new(
+	my $driver = Helios::ObjectDriver::DBI->new(
 	    dsn      => $config->{dsn},
 	    username => $config->{user},
 	    password => $config->{password}
