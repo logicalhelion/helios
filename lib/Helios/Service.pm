@@ -6,7 +6,7 @@ use warnings;
 use base qw( TheSchwartz::Worker );
 use File::Spec;
 use Sys::Hostname;
-use Config::IniFiles;
+#[]old use Config::IniFiles;
 use DBI;
 #[]old use Data::ObjectDriver::Driver::DBI;
 use Helios::ObjectDriver::DBI;
@@ -15,11 +15,12 @@ require XML::Simple;
 
 use Helios::Error;
 use Helios::Job;
+use Helios::Config;
 use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.50_2830';
+our $VERSION = '2.50_2860';
 
 =head1 NAME
 
@@ -456,8 +457,16 @@ sub prep {
 		$self->setConfig($cached_config);
 		return 1;        
     } else {
-		$self->getConfigFromIni();
-		$self->getConfigFromDb();
+#[]old		$self->getConfigFromIni();
+#[]old		$self->getConfigFromDb();
+		Helios::Config->init(
+			CONF_FILE => $self->getIniFile(),
+			SERVICE => $self->getJobType(),
+			HOSTNAME => $self->getHostname(),
+			DEBUG => $self->debug()
+		);
+		my $conf = Helios::Config->parseConfig();
+		$self->setConfig($conf);
 	}
 
 	# use the given D::OD driver if we were given one
@@ -613,6 +622,7 @@ sub getFuncidFromDb {
 
     if ($self->debug) { print "Retrieving funcid for ".$self->getJobType()."\n"; }
 
+=old
     try {
         my $driver = $self->getDriver();
         # also get the funcid 
@@ -627,6 +637,23 @@ sub getFuncidFromDb {
 	} otherwise {
 		my $e = shift;
 		throw Helios::Error::DatabaseError($e->text);
+	};
+=cut
+
+	eval {
+        my $driver = $self->getDriver();
+        # also get the funcid 
+        my @funcids = $driver->search('TheSchwartz::FuncMap' => {
+                funcname => $jobtype 
+            }
+        );
+        if ( scalar(@funcids) > 0 ) {
+            $self->setFuncid( $funcids[0]->funcid() );
+        }
+		
+	} or do {
+		my $E = $@;
+		Helios::Error::DatabaseError->throw("$E");
 	};
     return $self->getFuncid();	
 }
@@ -645,6 +672,7 @@ sub jobsWaiting {
 	my $self = shift;
 	my $params = $self->getConfig();
 	my $jobType = $self->getJobType();
+=old
 	my $funcid;
 
 	try {
@@ -688,7 +716,32 @@ WHERE funcid = ?
 	} otherwise {
 		throw Helios::Error::DatabaseError($DBI::errstr);
 	};
+=cut
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+
+	my $jobsWaiting;
+	my $funcid = $self->getFuncid();
+	eval {
+		my $dbh = $self->dbConnect();
+		unless ( defined($funcid) ) {
+			$funcid = $self->getFuncidFromDb();
+		}
+		
+		my $sth = $dbh->prepare_cached('SELECT COUNT(*) FROM job WHERE funcid = ? AND (run_after < ?) AND (grabbed_until < ?)');
+		$sth->execute($funcid, time(), time());
+		my $r = $sth->fetchrow_arrayref();
+		$sth->finish();
+		$jobsWaiting = $r->[0];
+		
+		1;
+	} or do {
+		my $E = $@;
+		Helios::Error::DatabaseError->throw("$E");
+	};
 	
+	return $jobsWaiting;
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
+
 }
 
 
@@ -776,7 +829,7 @@ sub dbConnect {
 		$password = $params->{password};
 		$options = $params->{options};
 	}
-
+=old
 	try {
 
 		my $dbh;
@@ -799,6 +852,34 @@ sub dbConnect {
 	} otherwise {
 		throw Helios::Error::DatabaseError($DBI::errstr);
 	};
+=cut
+
+		my $dbh;
+		
+	eval {
+
+		if ($options) {
+			my $o = eval "{$options}";
+			if ($@) { $self->errstr($@); return undef;	}
+			if ($self->debug) { print "dsn=$dsn\nuser=$user\noptions=$options\n"; }	
+			$dbh = DBI->connect_cached($dsn, $user, $password, $o);	
+		} else {
+			if ($self->debug) { print "dsn=$dsn\nuser=$user\n";	} 
+			$dbh = DBI->connect_cached($dsn, $user, $password, {RaiseError => 1, AutoCommit => 1, 'private_heliconn_'.$$ => $$});
+		}
+        unless ( defined($dbh) ) {
+			$self->errstr("DB ERROR: ".$DBI::errstr); 
+			throw Helios::Error::DatabaseError($DBI::errstr);
+		}
+		$dbh->{RaiseError} = 1;
+		1;
+	} or do {
+		my $E = $@;
+		Helios::Error::DatabaseError->throw("$E");
+	};
+
+
+		return $dbh;
 
 }
 

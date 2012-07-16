@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use base qw(Data::ObjectDriver::Driver::DBI);
 
-our $VERSION = '2.50_2850';
+our $VERSION = '2.50_2860';
 
 my %Handles;
 sub init_db {
@@ -17,7 +17,7 @@ sub init_db {
     unless ($dbh) {
         eval {
             $dbh = DBI->connect_cached($driver->dsn, $driver->username, $driver->password,
-                { RaiseError => 1, PrintError => 0, AutoCommit => 1, 'private_conn_'.$$ => $$,
+                { RaiseError => 1, PrintError => 0, AutoCommit => 1, 'private_heliconn_'.$$ => $$,
                 %{$driver->connect_options || {}} })
                 or Carp::croak("Connection error: " . $DBI::errstr);
         };

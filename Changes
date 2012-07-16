@@ -1,4 +1,9 @@
 Revision history for Perl extension Helios.
+2.50_2860  Sun Jul 15 22:14:00 2012
+	-NEW Helios::Config module to handle parsing of configuration 
+	 information, and modifications to Helios::Service and helios.pl 
+	 to use it instead of the old getConfigFromIni() and 
+	 getConfigFromDb() methods.
 2.50_2850  Wed Jul 11 23:36:00 2012  
 	-Helios::TheSchwartz and Helios::ObjectDriver::DBI added to 
 	 implement DBI-level database connection caching.  

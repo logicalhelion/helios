@@ -21,6 +21,7 @@ INSTALL.redhat
 INSTALL.ubuntu
 lib/Bundle/Helios.pm
 lib/Helios.pm
+lib/Helios/Config.pm
 lib/Helios/ConfigParam.pm
 lib/Helios/Error.pm
 lib/Helios/Error/BaseError.pm

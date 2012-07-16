@@ -17,8 +17,9 @@ use Helios;
 use Helios::Error;
 use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
+use Helios::Config;
 
-our $VERSION = '2.50_2830';
+our $VERSION = '2.50_2860';
 
 =head1 NAME
 
@@ -340,6 +341,8 @@ if ( defined($params->{worker_blitz_factor}) ) {
 if ($DEBUG_MODE) { 
 	print "MASTER LAUNCH INTERVAL: $MASTER_LAUNCH_INTERVAL\n"; 
 	print "ZERO LAUNCH INTERVAL: $ZERO_LAUNCH_INTERVAL\n"; 
+	print "ZERO SLEEP_INTERVAL: $ZERO_SLEEP_INTERVAL\n";	#[]?
+	print "REGISTRATION_INTERVAL: $REGISTRATION_INTERVAL\n";	#[]?
 	print "WORKER BLITZ FACTOR: $WORKER_BLITZ_FACTOR\n";	#[]?
 }
 
@@ -451,9 +454,9 @@ MAIN_LOOP:{
 		
 				# recheck db parameters
 				$params = undef;
-				$worker->getConfigFromDb();	
-				$params = $worker->getConfig();
-
+#[]old				$worker->getConfigFromDb();	
+#[]old				$params = $worker->getConfig();
+				$params = Helios::Config->parseConfig();
 
 				# DAEMON REGISTRATION
 				# every $REGISTRATION_INTERVAL seconds, (re)register this daemon in the database
