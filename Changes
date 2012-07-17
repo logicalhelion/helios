@@ -1,4 +1,13 @@
 Revision history for Perl extension Helios.
+2.50_2910  Mon Jul 16 21:18:00 2012
+	-Helios::Service: changes to dbConnect(), jobsWaiting() to prevent 
+	 clobbering of Helios::ObjectDriver::DBI connections in some 
+	 cases.
+	-Helios::Service: replaced try {} otherwise block with 
+	 eval {} or do in getFuncidFromDb().
+	-Updated copyright notices in README and Helios.pm to include
+	 notifications of Logical Helion and Six Apart code 
+	 (the notices were intact on the code in question).
 2.50_2860  Sun Jul 15 22:14:00 2012
 	-NEW Helios::Config module to handle parsing of configuration 
 	 information, and modifications to Helios::Service and helios.pl 

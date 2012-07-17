@@ -20,7 +20,7 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.50_2860';
+our $VERSION = '2.50_2910';
 
 =head1 NAME
 
@@ -466,6 +466,7 @@ sub prep {
 			DEBUG => $self->debug()
 		);
 		my $conf = Helios::Config->parseConfig();
+
 		$self->setConfig($conf);
 	}
 
@@ -641,21 +642,19 @@ sub getFuncidFromDb {
 =cut
 
 	eval {
-        my $driver = $self->getDriver();
-        # also get the funcid 
-        my @funcids = $driver->search('TheSchwartz::FuncMap' => {
-                funcname => $jobtype 
-            }
-        );
-        if ( scalar(@funcids) > 0 ) {
-            $self->setFuncid( $funcids[0]->funcid() );
-        }
-		
+		my $driver = $self->getDriver();
+		# also get the funcid 
+		my @funcids = $driver->search('TheSchwartz::FuncMap' => { funcname => $jobtype });
+		if ( scalar(@funcids) > 0 ) {
+			$self->setFuncid( $funcids[0]->funcid() );
+		}
+		1;
 	} or do {
 		my $E = $@;
 		Helios::Error::DatabaseError->throw("$E");
 	};
-    return $self->getFuncid();	
+
+	return $self->getFuncid();	
 }
 
 
@@ -717,6 +716,8 @@ WHERE funcid = ?
 		throw Helios::Error::DatabaseError($DBI::errstr);
 	};
 =cut
+
+
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
 
 	my $jobsWaiting;
@@ -741,6 +742,9 @@ WHERE funcid = ?
 	
 	return $jobsWaiting;
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
+
+
+
 
 }
 
@@ -854,7 +858,7 @@ sub dbConnect {
 	};
 =cut
 
-		my $dbh;
+	my $dbh;
 		
 	eval {
 
@@ -862,16 +866,19 @@ sub dbConnect {
 			my $o = eval "{$options}";
 			if ($@) { $self->errstr($@); return undef;	}
 			if ($self->debug) { print "dsn=$dsn\nuser=$user\noptions=$options\n"; }	
+			$o->{RaiseError} = 1;
+			$o->{AutoCommit} = 1;
+			$o->{'private_heliconn_dbconnect_'.$$} = $$;
 			$dbh = DBI->connect_cached($dsn, $user, $password, $o);	
 		} else {
 			if ($self->debug) { print "dsn=$dsn\nuser=$user\n";	} 
-			$dbh = DBI->connect_cached($dsn, $user, $password, {RaiseError => 1, AutoCommit => 1, 'private_heliconn_'.$$ => $$});
+			$dbh = DBI->connect_cached($dsn, $user, $password, {RaiseError => 1, AutoCommit => 1, 'private_heliconn_dbconnect_'.$$ => $$});
 		}
-        unless ( defined($dbh) ) {
+		unless ( defined($dbh) ) {
 			$self->errstr("DB ERROR: ".$DBI::errstr); 
-			throw Helios::Error::DatabaseError($DBI::errstr);
+			Helios::Error::DatabaseError->throw($DBI::errstr);
 		}
-		$dbh->{RaiseError} = 1;
+
 		1;
 	} or do {
 		my $E = $@;
@@ -879,7 +886,7 @@ sub dbConnect {
 	};
 
 
-		return $dbh;
+	return $dbh;
 
 }
 
@@ -1004,6 +1011,7 @@ sub logMsg {
 	my $level;
 	my $msg;
 	my @loggers;
+
 
 	# were we called with 3 params?  ($job, $level, $msg)
 	# 2 params?                      ($level, $msg) or ($job, $msg)
@@ -1295,6 +1303,9 @@ Copyright (C) 2009 by Andrew Johnson.
 
 Portions of this software, where noted, are
 Copyright (C) 2011-2012 by Andrew Johnson.
+
+Portions of this software, where noted, are
+Copyright (C) 2012 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,
