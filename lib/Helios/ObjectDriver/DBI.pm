@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use base qw(Data::ObjectDriver::Driver::DBI);
 
-our $VERSION = '2.50_2860';
+our $VERSION = '2.50_3040';
 
 my %Handles;
 sub init_db {
@@ -31,6 +31,14 @@ sub init_db {
     $driver->dbd->init_dbh($dbh);
     $driver->{__dbh_init_by_driver} = 1;
     return $dbh;
+}
+
+
+sub DESTROY {
+	# Unlike in the base Data::ObjectDriver::Driver::DBI
+	# we don't want to disconnect the database connection
+	# EVEN IF we created it.
+	# We'll let DBI handle disconnection exclusively
 }
 
 1;

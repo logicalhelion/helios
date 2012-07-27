@@ -1,4 +1,15 @@
 Revision history for Perl extension Helios.
+2.50_3040  Thu Jul 26 23:59:00 2012
+	-changes to Helios::ObjectDriver::DBI and helios.pl to properly
+	 handle database connections between parent and child processes
+	 (prevents children from attempting to disconnect parent db
+	 connections)
+	-helios.pl: changed new worker_blitz_factor param to 
+	 WORKER_BLITZ_FACTOR for consistency with OVERDRIVE, HOLD, etc.
+	 WORKER_BLITZ_FACTOR is now dynamically updated instead of set 
+	 only at runtime.
+	-Updated lib/Bundle/Helios.pm so it's proper package name is 
+	 Bundle::Helios, not Bundle::Helios::Generic (oops).
 2.50_2910  Mon Jul 16 21:18:00 2012
 	-Helios::Service: changes to dbConnect(), jobsWaiting() to prevent 
 	 clobbering of Helios::ObjectDriver::DBI connections in some 

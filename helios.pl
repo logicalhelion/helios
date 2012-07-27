@@ -19,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
 use Helios::Config;
 
-our $VERSION = '2.50_2860';
+our $VERSION = '2.50_3040';
 
 =head1 NAME
 
@@ -257,6 +257,7 @@ our $WORKER_PROCESS = 0;				# used to indicate process has become a worker proce
 										# from becoming daemons in case of database instability
 
 our $WORKER_BLITZ_FACTOR = 1;			# used to determine how many workers to launch
+our $HELIOS_DB_CONN;					# database handle to help with DBI+forking issues
 
 # print help if asked
 if ( !defined($CLASS) || ($CLASS eq '--help') || ($CLASS eq '-h') ) {
@@ -332,11 +333,14 @@ if ( defined($params->{registration_interval}) ) {
 } else {
 	$REGISTRATION_INTERVAL = $DEFAULTS{REGISTRATION_INTERVAL};
 }
-if ( defined($params->{worker_blitz_factor}) ) {
-	$WORKER_BLITZ_FACTOR = $params->{worker_blitz_factor};
+if ( defined($params->{WORKER_BLITZ_FACTOR}) ) {
+	$WORKER_BLITZ_FACTOR = $params->{WORKER_BLITZ_FACTOR};
 } else {
 	$WORKER_BLITZ_FACTOR = $DEFAULTS{WORKER_BLITZ_FACTOR};
 }
+# make a globally accessible database handle 
+# to make it easier to clean up CachedKids after a fork()
+$HELIOS_DB_CONN = $worker->dbConnect();
 
 if ($DEBUG_MODE) { 
 	print "MASTER LAUNCH INTERVAL: $MASTER_LAUNCH_INTERVAL\n"; 
@@ -370,8 +374,9 @@ my $times_sleeping = 0;
 # daemonize and launch the main loop
 if ( defined($ARGV[0]) && lc($ARGV[0]) eq '--clear-halt' ) {
 	clear_halt();
-	$worker->getConfigFromIni();
-	$worker->getConfigFromDb();
+#[]old	$worker->getConfigFromIni();
+#[]old	$worker->getConfigFromDb();
+	$worker->prep();
 	$params = $worker->getConfig();
 }
 if ( defined($params->{HALT}) ) {
@@ -457,7 +462,7 @@ MAIN_LOOP:{
 #[]old				$worker->getConfigFromDb();	
 #[]old				$params = $worker->getConfig();
 				$params = Helios::Config->parseConfig();
-
+				
 				# DAEMON REGISTRATION
 				# every $REGISTRATION_INTERVAL seconds, (re)register this daemon in the database
 				if ( ($REGISTRATION_LAST + $REGISTRATION_INTERVAL) < time() ) {
@@ -520,6 +525,8 @@ MAIN_LOOP:{
 				# if the number of waiting jobs is less than max workers
 				# then only launch one worker to reduce worker contention
 #[]old				if ( ($workers_to_launch > 0) && ($waiting_jobs < $max_workers) ) {
+				# refresh worker blitz factor, then determine if we blitz or not
+				$WORKER_BLITZ_FACTOR = $params->{WORKER_BLITZ_FACTOR} ? $params->{WORKER_BLITZ_FACTOR} : $DEFAULTS{WORKER_BLITZ_FACTOR};
 				if ( ($workers_to_launch > 0) && ($waiting_jobs < ($max_workers * $WORKER_BLITZ_FACTOR ) ) ) {
 					$workers_to_launch = 1;
 				}
@@ -535,6 +542,24 @@ MAIN_LOOP:{
 								} elsif (defined $pid) { # $pid is zero here if defined
 										# I'm the child!
 										$WORKER_PROCESS = 1;
+										
+										# BEFORE WE LAUNCH THE WORKER,
+										# clean up the database connections from the parent
+										# we'll set InactiveDestroy on the existing connections
+										# then we'll clear them, leaving the parent connections
+										# free of any influence of the children
+										# NOTE:  with DBI >= 1.614, all we'd have to do is
+										# set AutoInactiveDestroy on all the connections
+										# but to support the DBI (1.52) bundled with RHEL & CentOS 5,
+										# we have to make do with what we have
+#										my $dbh = $worker->dbConnect();
+										my $ck = $HELIOS_DB_CONN->{Driver}->{CachedKids};
+										foreach (keys %$ck) {
+											$ck->{$_}->{InactiveDestroy} = 1;
+										}
+										%$ck = ();
+
+										# NOW, launch the worker
 										launch_worker();
 							} elsif ($! == EAGAIN) {
 								# EAGAIN is the supposedly recoverable fork error
