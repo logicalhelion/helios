@@ -19,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
 use Helios::Config;
 
-our $VERSION = '2.50_3040';
+our $VERSION = '2.50_3070';
 
 =head1 NAME
 
@@ -230,7 +230,8 @@ our %DEFAULTS = (
     ZERO_LAUNCH_INTERVAL => 10,
     ZERO_SLEEP_INTERVAL => 10,
     REGISTRATION_INTERVAL => 60,
-    WORKER_BLITZ_FACTOR => 1
+    WORKER_BLITZ_FACTOR => 1,
+    DOUBLE_CLUTCH_INTERVAL => 20
 );
 our $CLEAN_SHUTDOWN = 1;				# used to determine if we should remove the PID file or not (at least for now)
 
@@ -251,6 +252,7 @@ our $SAFE_MODE_RETRIES = 5;				# SAFE MODE support; number of times to retry
 our $ZERO_SLEEP_INTERVAL;				# to reduce needless checking of the database
 our $ZERO_SLEEP_LOG_INTERVAL = 3600;	# to reduce needless log msgs in log_tb
 our $ZERO_SLEEP_LOG_LAST = 0;
+our $DOUBLE_CLUTCH_INTERVAL = 20;		# for WORKER_MAX_TTL functionality
 
 our $WORKER_PROCESS = 0;				# used to indicate process has become a worker process
 										# this is used in addition to getppid() to prevent workers
@@ -338,6 +340,12 @@ if ( defined($params->{WORKER_BLITZ_FACTOR}) ) {
 } else {
 	$WORKER_BLITZ_FACTOR = $DEFAULTS{WORKER_BLITZ_FACTOR};
 }
+if ( defined($params->{DOUBLE_CLUTCH_INTERVAL}) ) {
+	$DOUBLE_CLUTCH_INTERVAL = $params->{DOUBLE_CLUTCH_INTERVAL};
+} else {
+	$DOUBLE_CLUTCH_INTERVAL = $DEFAULTS{DOUBLE_CLUTCH_INTERVAL};	
+}
+
 # make a globally accessible database handle 
 # to make it easier to clean up CachedKids after a fork()
 $HELIOS_DB_CONN = $worker->dbConnect();
@@ -543,6 +551,7 @@ MAIN_LOOP:{
 										# I'm the child!
 										$WORKER_PROCESS = 1;
 										
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
 										# BEFORE WE LAUNCH THE WORKER,
 										# clean up the database connections from the parent
 										# we'll set InactiveDestroy on the existing connections
@@ -552,12 +561,12 @@ MAIN_LOOP:{
 										# set AutoInactiveDestroy on all the connections
 										# but to support the DBI (1.52) bundled with RHEL & CentOS 5,
 										# we have to make do with what we have
-#										my $dbh = $worker->dbConnect();
 										my $ck = $HELIOS_DB_CONN->{Driver}->{CachedKids};
 										foreach (keys %$ck) {
 											$ck->{$_}->{InactiveDestroy} = 1;
 										}
 										%$ck = ();
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
 										# NOW, launch the worker
 										launch_worker();
@@ -734,8 +743,9 @@ service's WORKER_MAX_TTL, the worker is killed (by sending it a SIGKILL signal).
 
 sub double_clutch {
     # sleep $ZERO_LAUNCH_INTERVAL secs before we double check on workers
-    sleep $ZERO_LAUNCH_INTERVAL;
-    sleep $ZERO_LAUNCH_INTERVAL;
+#[]old    sleep $ZERO_LAUNCH_INTERVAL;
+#[]old    sleep $ZERO_LAUNCH_INTERVAL;
+	sleep $DOUBLE_CLUTCH_INTERVAL;
     foreach my $pid (keys %workers) {
         my $time_of_death = $workers{$pid} + $params->{WORKER_MAX_TTL};
         if ( time() > $time_of_death ) {
@@ -1118,6 +1128,9 @@ Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
 =head1 COPYRIGHT AND LICENSE
 
 Copyright (C) 2007-9 by CEB Toolbox, Inc.
+
+Portions of this software, where noted, are
+Copyright (C) 2012 by Logical Helion, LLC.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

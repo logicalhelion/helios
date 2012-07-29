@@ -1,4 +1,7 @@
 Revision history for Perl extension Helios.
+2.50_3070  Sun Jul 29 16:37:00 2012
+	-helios.pl: Added DOUBLE_CLUTCH_INTERVAL config param to support
+	 WORKER_MAX_TTL functionaity.  Updated copyright info.
 2.50_3060  Sat Jul 28 17:34:00 2012
 	-Fixed Helios::Config->init() RT#78616
 	-Added Helios::Error::ConfigError exception to throw in case of 
