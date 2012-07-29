@@ -1,4 +1,8 @@
 Revision history for Perl extension Helios.
+2.50_3060  Sat Jul 28 17:34:00 2012
+	-Fixed Helios::Config->init() RT#78616
+	-Added Helios::Error::ConfigError exception to throw in case of 
+	 configuration problems.
 2.50_3040  Thu Jul 26 23:59:00 2012
 	-changes to Helios::ObjectDriver::DBI and helios.pl to properly
 	 handle database connections between parent and child processes

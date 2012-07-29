@@ -6,12 +6,13 @@ use warnings;
 use File::Spec;
 use Sys::Hostname;
 
-use Config::IniFiles;  	#[] hopefully we can get rid of this
+use Config::IniFiles;  	
 
 use Helios::ObjectDriver::DBI;
 use Helios::ConfigParam;
+use Helios::Error::ConfigError;
 
-our $VERSION = '2.50_2860';
+our $VERSION = '2.50_3060';
 
 my $Debug = 0;
 my $Errstr;
@@ -137,7 +138,7 @@ sub init {
 		$self->setHostname( hostname() );
 	}
 	# again, pull conf file from environment if not already set
-	unless ( $self->getConfFile() && defined($ENV{HELIOS_INI}) ) {
+	if ( !defined($self->getConfFile()) && defined($ENV{HELIOS_INI}) ) {
 		$self->setConfFile( $ENV{HELIOS_INI} );
 	}
 	return $self;
@@ -189,11 +190,11 @@ sub parseConfFile {
 	my $service_name = $self->getServiceName();
 	my $conf;
 	
-	unless ($conf_file) { die("No conf file specified"); }	#[]E
-	unless (-r $conf_file) { die("Cannot read conf file $conf_file"); }	#[]E
+	unless ($conf_file)    { Helios::Error::ConfigError->throw("No conf file specified"); }
+	unless (-r $conf_file) { Helios::Error::ConfigError->throw("Cannot read conf file $conf_file"); }
 	
 	my $cif = Config::IniFiles->new( -file => $conf_file );
-	unless ( defined($cif) ) { die("Invalid conf file; check configuration"); }	#[]E
+	unless ( defined($cif) ) { Helios::Error::ConfigError->throw("Invalid config file; check configuration"); }
 
 	# global must exist 
 	if ($cif->SectionExists("global") ) {

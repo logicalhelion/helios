@@ -25,6 +25,7 @@ lib/Helios/Config.pm
 lib/Helios/ConfigParam.pm
 lib/Helios/Error.pm
 lib/Helios/Error/BaseError.pm
+lib/Helios/Error/ConfigError.pm
 lib/Helios/Error/DatabaseError.pm
 lib/Helios/Error/Fatal.pm
 lib/Helios/Error/FatalNoRetry.pm
