@@ -9,8 +9,9 @@ use Helios::Error::FatalNoRetry;
 use Helios::Error::DatabaseError;
 use Helios::Error::InvalidArg;
 use Helios::Error::LoggingError;
+use Helios::Error::ConfigError;
 
-our $VERSION = '2.40';
+our $VERSION = '2.50_3160';
 
 1;
 

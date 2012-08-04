@@ -10,7 +10,7 @@ use Sys::Hostname;
 use DBI;
 #[]old use Data::ObjectDriver::Driver::DBI;
 use Helios::ObjectDriver::DBI;
-use Error qw(:try);
+#[]old use Error qw(:try);
 require XML::Simple;
 
 use Helios::Error;
@@ -20,7 +20,7 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.50_2910';
+our $VERSION = '2.50_3160';
 
 =head1 NAME
 
@@ -94,6 +94,7 @@ our $CACHED_CONFIG_RETRIEVAL_COUNT = 0;
 our $WORKER_START_TIME = 0;
 
 our %INIT_LOG_CLASSES;	# for the logging system
+our $INIT_CONFIG_CLASS; # for config system
 
 our $DRIVER;	# for caching the Data::ObjectDriver
 
@@ -459,15 +460,23 @@ sub prep {
     } else {
 #[]old		$self->getConfigFromIni();
 #[]old		$self->getConfigFromDb();
-		Helios::Config->init(
-			CONF_FILE => $self->getIniFile(),
-			SERVICE => $self->getJobType(),
-			HOSTNAME => $self->getHostname(),
-			DEBUG => $self->debug()
-		);
-		my $conf = Helios::Config->parseConfig();
+#working		
+#		Helios::Config->init(
+#			CONF_FILE => $self->getIniFile(),
+#			SERVICE => $self->getJobType(),
+#			HOSTNAME => $self->getHostname(),
+#			DEBUG => $self->debug()
+#		);
+#		my $conf = Helios::Config->parseConfig();
+print "--PREP() CONFIG SECTION--\n";
+		# initialize config module if it isn't already initialized
+		unless ($INIT_CONFIG_CLASS) {
+			$INIT_CONFIG_CLASS = $self->initConfig();
+		}
+		my $conf = $INIT_CONFIG_CLASS->parseConfig();
 
 		$self->setConfig($conf);
+print "--END PREP() CONFIG SECTION--\n";
 	}
 
 	# use the given D::OD driver if we were given one
@@ -487,7 +496,7 @@ sub prep {
 }
 # END Code Copyright Andrew Johnson.
 
-=head2 getConfigFromIni([$inifile])
+=head2 getConfigFromIni([$inifile]) DEPRECATED
 
 The getConfigFromIni() method opens the helios.ini file, grabs global params and config params relevant to
 the current service class, and returns them in a hash to the calling routine.  It also sets the class's 
@@ -504,7 +513,7 @@ sub getConfigFromIni {
 	my $inifile = shift;
 	my $jobtype = $self->getJobType();
 	my %params;
-
+=old
 	# use the object's INI file if we weren't given one explicitly
 	# or use the contents of the HELIOS_INI env var
 	unless ($inifile) {
@@ -544,10 +553,20 @@ sub getConfigFromIni {
 
 	$self->setConfig(\%params);
 	return %params;
+=cut
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+	
+	unless ($INIT_CONFIG_CLASS) {
+		$INIT_CONFIG_CLASS = $self->initConfig();
+	}
+	my $conf = $INIT_CONFIG_CLASS->parseConfFile();
+	return %{$conf};
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
+
 }
 
 
-=head2 getConfigFromDb()
+=head2 getConfigFromDb() DEPRECATED
 
 The getConfigFromDb() method connects to the Helios database, retrieves config params relevant to the 
 current service class, and returns them in a hash to the calling routine.  It also sets the class's 
@@ -573,7 +592,7 @@ sub getConfigFromDb {
 	my $jobtype = $self->getJobType();
 	my @cps;
 	my $cp;
-
+=old
 	if ($self->debug) { print "Retrieving params for ".$self->getJobType()." on ".$self->getHostname()."\n"; }
 
 	try {
@@ -608,6 +627,16 @@ sub getConfigFromDb {
 
 	$self->setConfig($params);
 	return %{$params};
+=cut
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+
+	unless ($INIT_CONFIG_CLASS) {
+		$INIT_CONFIG_CLASS = $self->initConfig();
+	}
+	my $conf = $INIT_CONFIG_CLASS->parseConfDb();
+	return %{$conf};
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
+
 }
 
 
@@ -1059,6 +1088,43 @@ sub logMsg {
 }
 
 
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+
+=head2 initConfig()
+
+=cut
+
+sub initConfig {
+	my $self = shift;
+	my $config_class = $self->ConfigClass() ? $self->ConfigClass() : 'Helios::Config';
+	
+	# only initialize the config system once
+	unless( defined($INIT_CONFIG_CLASS) ) {
+
+		if ( $config_class !~ /^[A-Za-z]([A-Za-z0-9_\-]|:{2})*[A-Za-z0-9_\-]$/ ) {
+			Helios::Error::ConfigError->throw("Requested Config class name is invalid: ".$config_class);
+		}
+
+		# attempt class load if it hasn't been already
+		unless ( $config_class->can('init') ) {
+			eval "require $config_class";
+		    Helios::Error::ConfigError($@) if $@;
+		}
+		
+		$config_class->init(
+			CONF_FILE => $self->getIniFile(),
+			SERVICE   => $self->getJobType(),
+			HOSTNAME  => $self->getHostname(),
+			DEBUG     => $self->debug()
+		);
+		$INIT_CONFIG_CLASS = $config_class;
+	}
+	return $config_class;
+}
+
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
+
+
 =head2 initLoggers()
 
 The initLoggers() method is called to initialize all of the configured 
@@ -1279,6 +1345,12 @@ the default.
 =cut
 
 sub JobClass { return undef; }
+
+=head2 ConfigClass()
+
+=cut
+
+sub ConfigClass { return undef; }
 
 
 1;

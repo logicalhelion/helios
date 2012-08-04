@@ -12,7 +12,7 @@ use Helios::ObjectDriver::DBI;
 use Helios::ConfigParam;
 use Helios::Error::ConfigError;
 
-our $VERSION = '2.50_3060';
+our $VERSION = '2.50_3160';
 
 my $Debug = 0;
 my $Errstr;
@@ -129,9 +129,9 @@ sub init {
 	my $self = shift;
 	my %params = @_;
 	if ( defined($params{CONF_FILE}) ) { $self->setConfFile($params{CONF_FILE}); }
-	if ( defined($params{SERVICE}) ) { $self->setServiceName($params{SERVICE}); }
-	if ( defined($params{HOSTNAME})) { $self->setHostname($params{HOSTNAME}); }
-	if ( defined($params{DEBUG}) ) { $self->debug($params{DEBUG}); }
+	if ( defined($params{SERVICE})   ) { $self->setServiceName($params{SERVICE}); }
+	if ( defined($params{HOSTNAME})  ) { $self->setHostname($params{HOSTNAME}); }
+	if ( defined($params{DEBUG})     ) { $self->debug($params{DEBUG}); }
 	
 	# pull hostname from the environment if not already set
 	unless ( $self->getHostname() ) {
@@ -141,6 +141,12 @@ sub init {
 	if ( !defined($self->getConfFile()) && defined($ENV{HELIOS_INI}) ) {
 		$self->setConfFile( $ENV{HELIOS_INI} );
 	}
+	
+	# init() clears previous config
+	$self->setConfFileConfig(undef);
+	$self->setDbConfig(undef);
+	$self->setConfig(undef);
+	
 	return $self;
 }
 

@@ -1,4 +1,26 @@
 Revision history for Perl extension Helios.
+2.50_3160  Sat Aug 04 14:11:00 2012
+	Significant changes to configuration subsystem.
+	-Helios::Config->init() now clears all already parsed config 
+	 data structures.  The init() method should normally only be 
+	 called once.
+	-Helios::Service: significant changes to how Helios::Service 
+	 interacts with Helios::Config.  
+	 -Added ConfigClass() method to specify alternate config modules 
+	  (like JobClass() and Helios::Job).  
+	 -Added initConfig() method to call init() for whatever config 
+	  module is specified and $INIT_CONFIG_CLASS to keep track of what
+	  config module has been initialized.  
+	 -The prep() method will now only call initConfig() to initialize 
+	  the config module once, but will always call parseConfig() to 
+	  update current config parameters (unless a cached config was 
+	  given when LAZY_CONFIG_UPDATE is active).
+	 -getConfigFromIni() and getConfigFromDb() have been rewritten 
+	  to use Helios::Config (or whatever ConfigClass() is set).
+	  However, use of these methods is now deprecated, as 
+	  Helios::Config and its subclasses can be used directly.
+	-t/1.t and t/2.t have been updated to test Helios::Config 
+	 functionality. 
 2.50_3070  Sun Jul 29 16:37:00 2012
 	-helios.pl: Added DOUBLE_CLUTCH_INTERVAL config param to support
 	 WORKER_MAX_TTL functionaity.  Updated copyright info.

@@ -7,7 +7,7 @@ use Test::More;
 unless ( defined($ENV{HELIOS_INI}) ) {
 	plan skip_all => '$HELIOS_INI not defined';
 } else {
-	plan tests => 5;
+	plan tests => 7;
 }
 
 
@@ -17,15 +17,18 @@ unless ( defined($ENV{HELIOS_INI}) ) {
 # let's try to read the INI file and connect to the helios database
 # (HELIOS_INI needs to be set for that)
 
+# first check configuration
+use_ok('Helios::Config');
+
+my $config_class = Helios::Config->init();
+isa_ok($config_class, 'Helios::Config');
+ok ( $config_class->parseConfig(), 'parsing configuration'); 
+my $conf = $config_class->getConfig();
+ok( defined($conf->{dsn}), 'dsn for collective database');
+
+# now test base service class
 use_ok('Helios::Service');
-
-$worker = new Helios::Service;
-isa_ok($worker, 'Helios::Service');
-
-ok( $worker->getConfigFromIni(), 'reading INI');
-$params = $worker->getConfig();
-ok( defined($params->{dsn}), 'dsn for helios db');
-
-ok( $worker->getConfigFromDb(), 'reading helios db');
-
+$service = Helios::Service->new();
+isa_ok($service, 'Helios::Service');
+ok ( $service->prep(), 'prep()ing service');
 

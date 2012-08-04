@@ -5,9 +5,8 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 18;
+use Test::More tests => 19;
 BEGIN { 
-	use_ok('Helios::Service');
 	# check the exception framework
 	use_ok('Helios::Error::BaseError');
 	use_ok('Helios::Error::Warning');
@@ -16,7 +15,11 @@ BEGIN {
 	use_ok('Helios::Error::DatabaseError');
 	use_ok('Helios::Error::InvalidArg');
 	use_ok('Helios::Error::LoggingError');
+	use_ok('Helios::Error::ConfigError');
 	use_ok('Helios::Error');
+
+	# config
+	use_ok('Helios::Config');
 	
 	# logging
 	use_ok('Helios::LogEntry::Levels');
