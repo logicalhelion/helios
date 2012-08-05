@@ -20,7 +20,7 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.50_3160';
+our $VERSION = '2.50_3161';
 
 =head1 NAME
 
@@ -80,12 +80,6 @@ whether the worker process should exit or stay running.  If OVERDRIVE mode is
 enabled and the service hasn't been HALTed or told to HOLD, the worker process 
 will stay running, and work() will be called to setup and run another job.  If 
 the service is not in OVERDRIVE mode, the worker process will exit.
-
-=head3 COPYRIGHT
-
-Portions of this method, where noted, are 
-Copyright (C) 2011-2012 by Andrew Johnson.  See the COPYRIGHT AND LICENSE section 
-elsewhere in this document for specific terms.
 
 =cut
 
@@ -468,7 +462,6 @@ sub prep {
 #			DEBUG => $self->debug()
 #		);
 #		my $conf = Helios::Config->parseConfig();
-print "--PREP() CONFIG SECTION--\n";
 		# initialize config module if it isn't already initialized
 		unless ($INIT_CONFIG_CLASS) {
 			$INIT_CONFIG_CLASS = $self->initConfig();
@@ -476,7 +469,6 @@ print "--PREP() CONFIG SECTION--\n";
 		my $conf = $INIT_CONFIG_CLASS->parseConfig();
 
 		$self->setConfig($conf);
-print "--END PREP() CONFIG SECTION--\n";
 	}
 
 	# use the given D::OD driver if we were given one
@@ -832,18 +824,32 @@ sub shouldExitOverdrive {
 }
 
 
+
 =head1 METHODS AVAILABLE TO SERVICE SUBCLASSES
 
 The methods in this section are available for use by Helios services.  They 
 allow your service to interact with the Helios environment.
 
-=head2 dbConnect($dsn, $user, $password)
+=cut
 
-Method to connect to a database.  If parameters not specified, uses dsn, user, password 
-from %params hash (the Helios database).
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
 
-This method uses the DBI->connect_cached() method to attempt to reduce the number of open 
-connections to a particular database.
+=head2 dbConnect($dsn, $user, $password, $options)
+
+Method to connect to a database in a "safe" way.  If the connection parameters 
+are not specified, a connection to the Helios collective database will be 
+returned.  If a connection to the given database already exists, dbConnect() 
+will return a database handle to the existing connection rather than create a 
+new connection.
+
+The dbConnect() method uses the DBI->connect_cached() method to reuse database 
+connections and thus reduce open connections to your database (often important
+when you potentially have hundreds of active worker processes working in a 
+Helios collective).  It "tags" the connections it creates with the current PID 
+to prevent reusing a connection that was established by a parent process.  
+That, combined with helios.pl clearing connections after the fork() to create 
+a worker process, should allow for safe database connection/disconnection in 
+a forking environment.
 
 =cut
 
@@ -854,41 +860,19 @@ sub dbConnect {
 	my $password = shift;
 	my $options = shift;
 	my $params = $self->getConfig();
+	my $connect_to_heliosdb = 0;
 
-	# if we weren't given params
-	unless ($dsn) {
+	# if we weren't given params, 
+	# we'll default to the Helios collective database
+	unless ( defined($dsn) ) {
 		$dsn = $params->{dsn};
 		$user = $params->{user};
 		$password = $params->{password};
 		$options = $params->{options};
+		$connect_to_heliosdb = 1;
 	}
-=old
-	try {
 
-		my $dbh;
-		if ($options) {
-			my $o = eval "{$options}";
-			if ($@) { $self->errstr($@); return undef;	}
-			if ($self->debug) { print "dsn=$dsn\nuser=$user\npass=$password\noptions=$options\n"; }	
-			$dbh = DBI->connect_cached($dsn, $user, $password, $o);	
-		} else {
-			if ($self->debug) { print "dsn=$dsn\nuser=$user\npass=$password\n";	} 
-			$dbh = DBI->connect_cached($dsn, $user, $password);
-		}
-        unless ( defined($dbh) ) {
-			$self->errstr("DB ERROR: ".$DBI::errstr); 
-			throw Helios::Error::DatabaseError($DBI::errstr);
-		}
-		$dbh->{RaiseError} = 1;
-		return $dbh;
-
-	} otherwise {
-		throw Helios::Error::DatabaseError($DBI::errstr);
-	};
-=cut
-
-	my $dbh;
-		
+=working		
 	eval {
 
 		if ($options) {
@@ -913,11 +897,61 @@ sub dbConnect {
 		my $E = $@;
 		Helios::Error::DatabaseError->throw("$E");
 	};
+=cut
 
+	my $dbh;
+	my $o;
 
+	eval {
+
+		# if we were given options, parse them into a hashref
+		# throw a config error if this fails
+		if ($options) {
+			$o = eval "{$options}";
+			Helios::Error::ConfigError->throw($@) if $@;
+		}
+		
+		# if we're connecting to the collective db, 
+		# we _must_ force certain options to make sure the "new" connection
+		# doesn't disrupt Helios operations
+		# (Previous dbConnect() code didn't properly handle connection creation
+		#  because it effectively ignored the "options" config param
+		if ( $connect_to_heliosdb ) {
+			$o->{RaiseError} = 1;
+			$o->{AutoCommit} = 1;
+		}
+		# ALL db connections created by dbConnect() get a "tag" 
+		# this is to generally make sure if a fork has happened, 
+		# we don't allow DBI to reuse a connection the parent made
+		# (helios.pl should be clearing those now, though)
+		$o->{'private_heliconn_dbconnect_'.$$} = $$;
+		
+		# debug
+		if ($self->debug) { 
+			print "dbConnect():\n\tdsn=$dsn\n";
+			if ( defined($user)   ) { print "\tuser=$user\n"; }
+			if ( defined($options)) { print "\toptions=$options\n"; } 
+		}	
+
+		# make the connection!
+		$dbh = DBI->connect_cached($dsn, $user, $password, $o);	
+
+		# if we *didn't* get a database connection, we have to throw an error
+		unless ( defined($dbh) ) {
+			Helios::Error::DatabaseError->throw($DBI::errstr);
+		}
+
+		1;
+	} or do {
+		# whatever exception was thrown, 
+		# we're going to cast it into a DatabaseError
+		my $E = $@;
+		Helios::Error::DatabaseError->throw("$E");
+	};
+	
 	return $dbh;
-
 }
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
 
 =head2 logMsg([$job,] [$priority_level,] $message)
@@ -1019,19 +1053,9 @@ this method will attempt to catch the error and log it to the
 Helios::Logger::Internal internal logger.  It will then rethrow the error 
 as a Helios::Error::LoggingError exception.
 
-=head3 COPYRIGHT AND LICENSE
-
-The logMsg() method is Copyright (C) 2009-12 by Andrew Johnson
-
-This method is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.0 or,
-at your option, any later version of Perl 5 you may have available.
-
-=head3 WARRANTY
-
-This software comes with no warranty of any kind.
-
 =cut
+
+# BEGIN CODE Copyright (C) 2009-12 by Andrew Johnson.
 
 sub logMsg {
 	my $self = shift;
@@ -1086,6 +1110,7 @@ sub logMsg {
 	
 	return 1;	
 }
+# END CODE Copyright (C) 2009-12 by Andrew Johnson.
 
 
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
@@ -1359,8 +1384,7 @@ __END__
 
 =head1 SEE ALSO
 
-L<helios.pl>, L<Helios::Job>, L<Helios::Error>, L<Helios::ConfigParam>, L<Helios::LogEntry>, 
-L<TheSchwartz>, L<XML::Simple>, L<Config::IniFiles>, L<Sys::Syslog>
+L<Helios>, L<helios.pl>, L<Helios::Job>, L<Helios::Error>, L<TheSchwartz>
 
 =head1 AUTHOR
 

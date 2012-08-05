@@ -1,4 +1,12 @@
 Revision history for Perl extension Helios.
+2.50_3161  Sat Aug 04 21:15:00 2012
+	-Helios::Service->dbConnect(): new version to properly handle 
+	 "options" config param for databases, properly separate Helios 
+	 collective database connections from connections to other databases.
+	 Updated documentation.
+	-Helios::Service:  Updated copyright info in several places.
+	-helios_job_submit.pl & helios_log_clean.pl:  updated to use new 
+	 configuration subsystem.
 2.50_3160  Sat Aug 04 14:11:00 2012
 	Significant changes to configuration subsystem.
 	-Helios::Config->init() now clears all already parsed config 

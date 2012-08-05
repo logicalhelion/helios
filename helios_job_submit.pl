@@ -8,7 +8,7 @@ use Error qw(:try);
 use Helios::Job;
 use Helios::Service;
 
-our $VERSION = '2.40';
+our $VERSION = '2.50_3161';
 
 =head1 NAME
 
@@ -56,7 +56,7 @@ if ( !defined($JOB_CLASS) || ($JOB_CLASS eq '--help') || ($JOB_CLASS eq '-h') ) 
 # instantiate the base worker class just to get the [global] INI params
 # (we need to know where the Helios db is)
 my $WORKER = new Helios::Service;
-$WORKER->getConfigFromIni();
+$WORKER->prep();
 my $config = $WORKER->getConfig();
 
 # if we were passed a <params> wodge of XML on the command line, 
