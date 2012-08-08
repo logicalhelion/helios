@@ -12,7 +12,7 @@ use Helios::ObjectDriver::DBI;
 use Helios::ConfigParam;
 use Helios::Error::ConfigError;
 
-our $VERSION = '2.50_3160';
+our $VERSION = '2.50_3220';
 
 my $Debug = 0;
 my $Errstr;
@@ -158,12 +158,14 @@ sub init {
 =cut
 
 sub parseConfig {
-	my $self = shift;
+	my Helios::Config $self = shift;
 	my $conf_file_config;
 	my $conf_db_config;
 
-	# if we were passed options, (re)init with the given options
-	if (@_) {
+	# if we were passed options,
+	# OR we haven't been initialized,
+	# go ahead and call init() (with the given options)
+	if (@_ || !( $self->getConfFile() && $self->getHostname() ) ) {
 		$self = $self->init(@_);
 	}
 	

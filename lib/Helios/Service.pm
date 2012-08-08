@@ -20,7 +20,7 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.50_3161';
+our $VERSION = '2.50_3220';
 
 =head1 NAME
 
@@ -503,9 +503,10 @@ you, and is the preferred method.
 sub getConfigFromIni {
 	my $self = shift;
 	my $inifile = shift;
+=old
 	my $jobtype = $self->getJobType();
 	my %params;
-=old
+
 	# use the object's INI file if we weren't given one explicitly
 	# or use the contents of the HELIOS_INI env var
 	unless ($inifile) {
@@ -549,9 +550,11 @@ sub getConfigFromIni {
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
 	
 	unless ($INIT_CONFIG_CLASS) {
+		if ( defined($inifile) ) { $self->setIniFile($inifile); }
 		$INIT_CONFIG_CLASS = $self->initConfig();
 	}
 	my $conf = $INIT_CONFIG_CLASS->parseConfFile();
+	$self->setConfig($conf);
 	return %{$conf};
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
@@ -580,11 +583,11 @@ will take care of things for the most part.
 sub getConfigFromDb {
 	my $self = shift;
 	my $params = $self->getConfig();
+=old
 	my $hostname = $self->getHostname();
 	my $jobtype = $self->getJobType();
 	my @cps;
 	my $cp;
-=old
 	if ($self->debug) { print "Retrieving params for ".$self->getJobType()." on ".$self->getHostname()."\n"; }
 
 	try {
@@ -625,8 +628,12 @@ sub getConfigFromDb {
 	unless ($INIT_CONFIG_CLASS) {
 		$INIT_CONFIG_CLASS = $self->initConfig();
 	}
-	my $conf = $INIT_CONFIG_CLASS->parseConfDb();
-	return %{$conf};
+	my $dbconf = $INIT_CONFIG_CLASS->parseConfDb();
+	while (my ($key, $value) = each %$dbconf ) {
+		$params->{$key} = $value;
+	}
+	$self->setConfig($params);
+	return %{$params};
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
 }

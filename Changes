@@ -1,4 +1,11 @@
 Revision history for Perl extension Helios.
+2.50_3220  Tue Aug 07 22:00:00 2012
+	-Helios::Service: fixes to getConfigFrom*() methods so they 
+	 function correctly with Helios::Config.  NOTE THESE METHODS WILL 
+	 BE DEPRECATED IN THE NEXT PRODUCTION RELEASE!
+	-Helios::Config: change to parseConfig() to call init() if the 
+	 class has not actually been initialized yet.
+	-Added README.pod to improve project appearance on GitHub
 2.50_3161  Sat Aug 04 21:15:00 2012
 	-Helios::Service->dbConnect(): new version to properly handle 
 	 "options" config param for databases, properly separate Helios 
