@@ -20,7 +20,7 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.50_3220';
+our $VERSION = '2.50_3630';
 
 =head1 NAME
 
@@ -503,50 +503,7 @@ you, and is the preferred method.
 sub getConfigFromIni {
 	my $self = shift;
 	my $inifile = shift;
-=old
-	my $jobtype = $self->getJobType();
-	my %params;
 
-	# use the object's INI file if we weren't given one explicitly
-	# or use the contents of the HELIOS_INI env var
-	unless ($inifile) {
-		if ( $self->getIniFile() ) {
-			$inifile = $self->getIniFile();
-		} elsif ( defined($ENV{HELIOS_INI}) ) {
-			$inifile = $ENV{HELIOS_INI};
-		} elsif (-r File::Spec->catfile(File::Spec->curdir,'helios.ini') ) {
-			$inifile = File::Spec->catfile(File::Spec->curdir,'helios.ini');
-		} else {
-			throw Helios::Error::InvalidArg("INI configuration file not specified.");
-		}
-	}
-
-	if ( $self->debug() ) { print "inifile: $inifile\nclass:$jobtype\n"; }		
-	unless (-r $inifile) { $self->errstr("INI read error: $!"); return undef; }
-
-	my $ini = new Config::IniFiles( -file => $inifile );
-	unless ( defined($ini) ) { throw Helios::Error::Fatal("Invalid INI file; check configuration"); }
-
-	# global must exist; it's where the helios db is declared
-	if ($ini->SectionExists("global") ) {
-		foreach ( $ini->Parameters("global") ) {
-			$params{$_} = $ini->val("global", $_);
-		}
-	} else {
-		throw Helios::Error::InvalidArg("Section [global] doesn't exist in config file $inifile");
-	}
-	
-	# if there's a section specifically for this service class, read it too
-	# (it will effectively override the global section, BTW)
-	if ( $ini->SectionExists($jobtype) ) {
-		foreach ( $ini->Parameters($jobtype) ) {
-			$params{$_} = $ini->val($jobtype, $_);
-		}
-	}
-
-	$self->setConfig(\%params);
-	return %params;
-=cut
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
 	
 	unless ($INIT_CONFIG_CLASS) {
@@ -583,46 +540,7 @@ will take care of things for the most part.
 sub getConfigFromDb {
 	my $self = shift;
 	my $params = $self->getConfig();
-=old
-	my $hostname = $self->getHostname();
-	my $jobtype = $self->getJobType();
-	my @cps;
-	my $cp;
-	if ($self->debug) { print "Retrieving params for ".$self->getJobType()." on ".$self->getHostname()."\n"; }
 
-	try {
-		my $driver = $self->getDriver();
-		@cps = $driver->search('Helios::ConfigParam' => {
-				worker_class => $jobtype,
-				host         => '*',
-			}
-		);
-		foreach $cp (@cps) {
-			if ($self->debug) { 
-				print $cp->param(),'=',$cp->value(),"\n";
-			}
-			$params->{$cp->param()} = $cp->value();
-		}
-		@cps = $driver->search('Helios::ConfigParam' => {
-				worker_class => $jobtype,
-				host         => $hostname,
-			}
-		);
-		foreach $cp (@cps) {
-			if ($self->debug) { 
-				print $cp->param(),'=',$cp->value(),"\n";
-			}
-			$params->{$cp->param()} = $cp->value();
-		}
-		
-	} otherwise {
-		my $e = shift;
-		throw Helios::Error::DatabaseError($e->text);
-	};
-
-	$self->setConfig($params);
-	return %{$params};
-=cut
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
 
 	unless ($INIT_CONFIG_CLASS) {
@@ -641,6 +559,15 @@ sub getConfigFromDb {
 
 =head2 getFuncidFromDb()
 
+Queries the collective database for the funcid of the service class and 
+returns it to the calling routine.  The service name used in the query is the 
+value returned from the getJobType() accessor method.  
+
+This method is most commonly used by helios.pl to get the funcid associated 
+with a particular service class, so it can scan the job table for waiting jobs.
+If their are jobs for the service waiting, helios.pl may launch new worker 
+processes to perform these jobs.
+
 =cut
 
 sub getFuncidFromDb {
@@ -650,24 +577,6 @@ sub getFuncidFromDb {
     my @funcids;
 
     if ($self->debug) { print "Retrieving funcid for ".$self->getJobType()."\n"; }
-
-=old
-    try {
-        my $driver = $self->getDriver();
-        # also get the funcid 
-        my @funcids = $driver->search('TheSchwartz::FuncMap' => {
-                funcname => $jobtype 
-            }
-        );
-        if ( scalar(@funcids) > 0 ) {
-            $self->setFuncid( $funcids[0]->funcid() );
-        }
-		
-	} otherwise {
-		my $e = shift;
-		throw Helios::Error::DatabaseError($e->text);
-	};
-=cut
 
 	eval {
 		my $driver = $self->getDriver();
@@ -699,51 +608,6 @@ sub jobsWaiting {
 	my $self = shift;
 	my $params = $self->getConfig();
 	my $jobType = $self->getJobType();
-=old
-	my $funcid;
-
-	try {
-
-		my $dbh = $self->dbConnect($params->{dsn}, $params->{user}, $params->{password});
-		unless ($dbh) { throw Helios::Error::DatabaseError($self->errstr); }
-
-		# get the funcid if we don't already have it
-		if ( !defined($self->getFuncid()) ) {
-		    $funcid = $self->getFuncidFromDb();
-		} else {
-		    $funcid = $self->getFuncid();
-		}
-
-#		my $sql2 = <<JWSQL2;
-#SELECT COUNT(*)
-#FROM job
-#WHERE funcid = ?
-#	AND (run_after < ?)
-#	AND (grabbed_until < ?)
-#JWSQL2
-		my $sql2 = qq{
-SELECT COUNT(*)
-FROM job
-WHERE funcid = ?
-	AND (run_after < ?)
-	AND (grabbed_until < ?)
-		};
-		my $sth2 = $dbh->prepare($sql2);
-
-		my $current_time = time();
-		$sth2->execute($funcid, $current_time, $current_time);
-		my $result2 = $sth2->fetchrow_arrayref();
-		unless ( defined($result2->[0]) ) {
-			$self->errstr("Received NULL value in jobsWaiting() for funcname $jobType!"); return undef; 
-		}
-		$sth2->finish();
-		$dbh->disconnect();
-		return $result2->[0];
-
-	} otherwise {
-		throw Helios::Error::DatabaseError($DBI::errstr);
-	};
-=cut
 
 
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
@@ -878,33 +742,6 @@ sub dbConnect {
 		$options = $params->{options};
 		$connect_to_heliosdb = 1;
 	}
-
-=working		
-	eval {
-
-		if ($options) {
-			my $o = eval "{$options}";
-			if ($@) { $self->errstr($@); return undef;	}
-			if ($self->debug) { print "dsn=$dsn\nuser=$user\noptions=$options\n"; }	
-			$o->{RaiseError} = 1;
-			$o->{AutoCommit} = 1;
-			$o->{'private_heliconn_dbconnect_'.$$} = $$;
-			$dbh = DBI->connect_cached($dsn, $user, $password, $o);	
-		} else {
-			if ($self->debug) { print "dsn=$dsn\nuser=$user\n";	} 
-			$dbh = DBI->connect_cached($dsn, $user, $password, {RaiseError => 1, AutoCommit => 1, 'private_heliconn_dbconnect_'.$$ => $$});
-		}
-		unless ( defined($dbh) ) {
-			$self->errstr("DB ERROR: ".$DBI::errstr); 
-			Helios::Error::DatabaseError->throw($DBI::errstr);
-		}
-
-		1;
-	} or do {
-		my $E = $@;
-		Helios::Error::DatabaseError->throw("$E");
-	};
-=cut
 
 	my $dbh;
 	my $o;

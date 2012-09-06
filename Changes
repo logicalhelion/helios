@@ -1,4 +1,14 @@
 Revision history for Perl extension Helios.
+2.50_3630  Wed Sep 05 20:30:00 2012
+	-Mostly a documentation release, with a few minor changes
+	-Helios::Config:  minor parameter changes to parseConfFile(), 
+	 parseConfDb(), DOCUMENTATION! (including a 1st stab at a list of 
+	 ALL Helios built-in config params).
+	-Helios::Service:  documentation cleanup, removal of old commented
+	 out code.	
+	-helios.pl: changed DOUBLE_CLUTCH_INTERVAL config param to 
+	 WORKER_MAX_TTL_WAIT_INTERVAL (nobody would understand "double clutch" 
+	 unless they read the helios.pl source code).
 2.50_3220  Tue Aug 07 22:00:00 2012
 	-Helios::Service: fixes to getConfigFrom*() methods so they 
 	 function correctly with Helios::Config.  NOTE THESE METHODS WILL 
