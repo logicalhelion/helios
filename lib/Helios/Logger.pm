@@ -8,7 +8,7 @@ use Helios::Job;
 use Helios::Error::LoggingError;
 use Helios::ObjectDriver::DBI;
 
-our $VERSION = '2.41';
+our $VERSION = '2.52_3950';
 
 =head1 NAME
 
@@ -122,7 +122,6 @@ sub initDriver {
 	my $self = shift;
 	my $config = $self->getConfig();
 	if ($self->debug) { print $config->{dsn},$config->{user},$config->{password},"\n"; }
-#[]old	my $driver = Data::ObjectDriver::Driver::DBI->new(
 	my $driver = Helios::ObjectDriver::DBI->new(
 	    dsn      => $config->{dsn},
 	    username => $config->{user},

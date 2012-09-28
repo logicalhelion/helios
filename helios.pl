@@ -11,7 +11,6 @@ use POSIX;
 
 use Error qw(:try);
 use Sys::Hostname;
-#[]old use TheSchwartz;
 
 use Helios;
 use Helios::Error;
@@ -19,7 +18,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
 use Helios::Config;
 
-our $VERSION = '2.50_3630';
+our $VERSION = '2.52_3950';
 
 =head1 NAME
 
@@ -353,9 +352,9 @@ $HELIOS_DB_CONN = $worker->dbConnect();
 if ($DEBUG_MODE) { 
 	print "MASTER LAUNCH INTERVAL: $MASTER_LAUNCH_INTERVAL\n"; 
 	print "ZERO LAUNCH INTERVAL: $ZERO_LAUNCH_INTERVAL\n"; 
-	print "ZERO SLEEP_INTERVAL: $ZERO_SLEEP_INTERVAL\n";	#[]?
-	print "REGISTRATION_INTERVAL: $REGISTRATION_INTERVAL\n";	#[]?
-	print "WORKER BLITZ FACTOR: $WORKER_BLITZ_FACTOR\n";	#[]?
+	print "ZERO SLEEP_INTERVAL: $ZERO_SLEEP_INTERVAL\n";	
+	print "REGISTRATION_INTERVAL: $REGISTRATION_INTERVAL\n";
+	print "WORKER BLITZ FACTOR: $WORKER_BLITZ_FACTOR\n";
 }
 
 my %workers;
@@ -382,8 +381,6 @@ my $times_sleeping = 0;
 # daemonize and launch the main loop
 if ( defined($ARGV[0]) && lc($ARGV[0]) eq '--clear-halt' ) {
 	clear_halt();
-#[]old	$worker->getConfigFromIni();
-#[]old	$worker->getConfigFromDb();
 	$worker->prep();
 	$params = $worker->getConfig();
 }
@@ -467,8 +464,6 @@ MAIN_LOOP:{
 		
 				# recheck db parameters
 				$params = undef;
-#[]old				$worker->getConfigFromDb();	
-#[]old				$params = $worker->getConfig();
 				$params = Helios::Config->parseConfig();
 				
 				# DAEMON REGISTRATION
@@ -530,9 +525,8 @@ MAIN_LOOP:{
 				# if we've got to this part of the loop, we have jobs that need workers to launch
 				# (though we still may not do it if we've already reached our limit)
 				my $workers_to_launch = $max_workers - $running_workers;
-				# if the number of waiting jobs is less than max workers
+				# if the number of waiting jobs is less than (max workers * worker blitz factor)
 				# then only launch one worker to reduce worker contention
-#[]old				if ( ($workers_to_launch > 0) && ($waiting_jobs < $max_workers) ) {
 				# refresh worker blitz factor, then determine if we blitz or not
 				$WORKER_BLITZ_FACTOR = $params->{WORKER_BLITZ_FACTOR} ? $params->{WORKER_BLITZ_FACTOR} : $DEFAULTS{WORKER_BLITZ_FACTOR};
 				if ( ($workers_to_launch > 0) && ($waiting_jobs < ($max_workers * $WORKER_BLITZ_FACTOR ) ) ) {
@@ -695,7 +689,7 @@ sub daemonize {
     # but I'll put them in for perlipc's sake anyway
     open STDIN, '/dev/null';
     open STDOUT, '>/dev/null';
-    open STDERR, '>/dev/null';	#[]?
+    open STDERR, '>/dev/null';
     
 	my $pid = fork;   
 	# make sure fork was successful
@@ -742,9 +736,7 @@ service's WORKER_MAX_TTL, the worker is killed (by sending it a SIGKILL signal).
 =cut
 
 sub double_clutch {
-    # sleep $ZERO_LAUNCH_INTERVAL secs before we double check on workers
-#[]old    sleep $ZERO_LAUNCH_INTERVAL;
-#[]old    sleep $ZERO_LAUNCH_INTERVAL;
+    # sleep $WORKER_MAX_TTL_WAIT_INTERVAL secs before we double check on workers
 	sleep $WORKER_MAX_TTL_WAIT_INTERVAL;
     foreach my $pid (keys %workers) {
         my $time_of_death = $workers{$pid} + $params->{WORKER_MAX_TTL};
@@ -774,7 +766,6 @@ sub launch_worker {
     # just in case this would cause a problem in worker process
     $SIG{CHLD} = 'DEFAULT';
     $SIG{TERM} = 'DEFAULT';
-#[]old	my $client = TheSchwartz->new(databases => $DATABASES_INFO);
 	my $client = Helios::TheSchwartz->new(databases => $DATABASES_INFO);
 	$client->can_do($worker_class);
 	my $return;

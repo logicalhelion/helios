@@ -6,11 +6,8 @@ use warnings;
 use base qw( TheSchwartz::Worker );
 use File::Spec;
 use Sys::Hostname;
-#[]old use Config::IniFiles;
 use DBI;
-#[]old use Data::ObjectDriver::Driver::DBI;
 use Helios::ObjectDriver::DBI;
-#[]old use Error qw(:try);
 require XML::Simple;
 
 use Helios::Error;
@@ -20,7 +17,7 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.50_3630';
+our $VERSION = '2.52_3950';
 
 =head1 NAME
 
@@ -41,7 +38,7 @@ failedJob(), or failedJobPermanent(), respectively) before it ends.
 =head1 TheSchwartz HANDLING METHODS
 
 The following 3 methods are used by the underlying TheSchwartz job queuing 
-system to determine what work is to be performed and, a job fails, how it 
+system to determine what work is to be performed and, if a job fails, how it 
 should be retried.
 
 YOU DO NOT NEED TO TOUCH THESE METHODS TO CREATE HELIOS SERVICES.  These 
@@ -452,16 +449,6 @@ sub prep {
 		$self->setConfig($cached_config);
 		return 1;        
     } else {
-#[]old		$self->getConfigFromIni();
-#[]old		$self->getConfigFromDb();
-#working		
-#		Helios::Config->init(
-#			CONF_FILE => $self->getIniFile(),
-#			SERVICE => $self->getJobType(),
-#			HOSTNAME => $self->getHostname(),
-#			DEBUG => $self->debug()
-#		);
-#		my $conf = Helios::Config->parseConfig();
 		# initialize config module if it isn't already initialized
 		unless ($INIT_CONFIG_CLASS) {
 			$INIT_CONFIG_CLASS = $self->initConfig();
@@ -658,7 +645,6 @@ sub initDriver {
 	my $self = shift;
 	my $config = $self->getConfig();
 	if ($self->debug) { print $config->{dsn},$config->{user},$config->{password},"\n"; }
-#[]old	my $driver = Data::ObjectDriver::Driver::DBI->new(
 	my $driver = Helios::ObjectDriver::DBI->new(
 	    dsn      => $config->{dsn},
 	    username => $config->{user},
@@ -961,6 +947,18 @@ sub logMsg {
 
 =head2 initConfig()
 
+The initConfig() method is called to initialize the configuration parsing 
+class.  This method is normally called by the prep() method before a service's 
+run() method is called; most Helios application developers do not need to 
+worry about this method.
+
+The normal Helios config parsing class is Helios::Config.  This can be 
+changed by specifying another config class with the ConfigClass() method in 
+your service.
+
+This method will throw a Helios::Error::ConfigError if anything goes wrong 
+with config class initialization.
+
 =cut
 
 sub initConfig {
@@ -977,7 +975,7 @@ sub initConfig {
 		# attempt class load if it hasn't been already
 		unless ( $config_class->can('init') ) {
 			eval "require $config_class";
-		    Helios::Error::ConfigError($@) if $@;
+		    Helios::Error::ConfigError->throw($@) if $@;
 		}
 		
 		$config_class->init(
@@ -1215,11 +1213,26 @@ the default.
 
 sub JobClass { return undef; }
 
+
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+
 =head2 ConfigClass()
+
+Defines which configuration class to use to parse your service's 
+configuration.  The default is Helios::Config, which should work fine for most 
+applications.  If necessary, you can create a subclass of Helios::Config and 
+set your ConfigClass() method to return that subclass's name.  The service's 
+prep() method will initialize your custom config class and use it to parse your 
+service's configuration information.
+
+See the L<Helios::Config> documentation for more information about creating 
+custom config classes.
 
 =cut
 
 sub ConfigClass { return undef; }
+
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
 
 1;
@@ -1228,7 +1241,8 @@ __END__
 
 =head1 SEE ALSO
 
-L<Helios>, L<helios.pl>, L<Helios::Job>, L<Helios::Error>, L<TheSchwartz>
+L<Helios>, L<helios.pl>, L<Helios::Job>, L<Helios::Error>, L<Helios::Config>, 
+L<TheSchwartz>
 
 =head1 AUTHOR
 

@@ -1,4 +1,7 @@
 Revision history for Perl extension Helios.
+2.52_3950  Fri Sep 28 17:00:00 2012
+	-HELIOS 2.60 RELEASE CANDIDATE 1
+	-General source code cleanup and removal of old commented out code
 2.50_3630  Wed Sep 05 20:30:00 2012
 	-Mostly a documentation release, with a few minor changes
 	-Helios::Config:  minor parameter changes to parseConfFile(), 

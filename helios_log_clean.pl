@@ -8,7 +8,7 @@ use Getopt::Long;
 use Helios::Service;
 use Helios::Error;
 
-our $VERSION = '2.50_3161';
+our $VERSION = '2.52_3950';
 
 =head1 NAME
 
@@ -80,7 +80,7 @@ my $epoch_horizon = time() - ($DAYS * $SECONDS_IN_DAY);
 # connect to the Helios database
 unless ($params->{dsn}) { throw Helios::Error::Fatal("Helios dsn not defined!"); }
 my $dbh = $WORKER->dbConnect($params->{dsn}, $params->{user}, $params->{password});
-if ($DBI::errstr) { throw Helios::Error::DatabaseError($DBI::errstr); }		#[]? necessary?
+if ($DBI::errstr) { throw Helios::Error::DatabaseError($DBI::errstr); }	
 if ($DEBUG_MODE) { print "Connected to Helios database.\n"; }
 
 # clean the log table

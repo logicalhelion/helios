@@ -6,8 +6,6 @@ use warnings;
 
 use DBI;
 use Error qw(:try);
-#[]old use TheSchwartz;
-#[]old use TheSchwartz::Job;
 use Helios::TheSchwartz;
 use Helios::ObjectDriver::DBI;
 
@@ -16,7 +14,7 @@ require XML::Simple;
 use Helios::Error;
 use Helios::JobHistory;
 
-our $VERSION = '2.50_2830';
+our $VERSION = '2.52_3950';
 
 our $D_OD_RETRIES = 3;
 our $D_OD_RETRY_INTERVAL = 5;
@@ -502,7 +500,6 @@ sub submit {
 
 	my $args = [ $params ];
 
-#[]old	my $client = TheSchwartz->new( databases => $databases, verbose => 1 );
 	my $client = Helios::TheSchwartz->new( databases => $databases, verbose => 1 );
 	my $sjh = $client->insert($job_class, $args);
 	$self->setJobid($sjh->jobid);
@@ -591,7 +588,6 @@ sub initDriver {
 	my $self = shift;
 	my $config = $self->getConfig();
 	if ($self->debug) { print $config->{dsn},$config->{user},$config->{password},"\n"; }
-#[]old	my $driver = Data::ObjectDriver::Driver::DBI->new(
 	my $driver = Helios::ObjectDriver::DBI->new(
 	    dsn      => $config->{dsn},
 	    username => $config->{user},
