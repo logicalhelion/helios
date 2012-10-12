@@ -18,7 +18,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
 use Helios::Config;
 
-our $VERSION = '2.52_3950';
+our $VERSION = '2.52_4150';
 
 =head1 NAME
 
@@ -272,15 +272,21 @@ print "Helios ",$Helios::VERSION,"\n";
 print "helios.pl Service Daemon version $VERSION\n";
 # --version support
 if ( $CLASS eq '--version') { exit(); }
-if ( $worker_class !~ /^[A-Za-z]([A-Za-z0-9_\-]|:{2})*[A-Za-z0-9_\-]$/ ) {
-	print "Sorry, requested name is invalid: $worker_class\n";
+#if ( $worker_class !~ /^[A-Za-z]([A-Za-z0-9_\-]|:{2})*[A-Za-z0-9_\-]$/ ) {
+#	print "Sorry, requested name is invalid: $worker_class\n";
+#	exit(1);
+#}
+print "Attempting to load $worker_class...\n"; 
+#unless ( $worker_class->can('new') ) {
+#        eval "require $worker_class";
+#        die $@ if $@;
+#}
+unless ( $worker_class ) {
+	print "You must specify the module name of a Helios service.\n";
 	exit(1);
 }
-print "Attempting to load $worker_class...\n"; 
-unless ( $worker_class->can('new') ) {
-        eval "require $worker_class";
-        die $@ if $@;
-}
+require_module($worker_class);
+
 if ( defined($worker_class->VERSION) ) {
 	print $worker_class, ' ', $worker_class->VERSION," loaded.\n";
 } else{
@@ -1106,6 +1112,36 @@ sub clear_halt {
 	return 1;	
 }
 
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+
+sub require_module {
+	my $service_class = shift;
+	
+	if ( $service_class !~ /^[A-Za-z]([A-Za-z0-9_\-]|:{2})*[A-Za-z0-9_\-]$/ ) {
+		print STDERR "Sorry, requested name is invalid: $service_class\n";
+		exit(1);
+	}
+	unless ( $service_class->can('new') ) {
+        eval {
+        	my $class_file = $service_class;
+        	$class_file .= '.pm';
+        	$class_file =~ s/::/\//g;
+			require $class_file;
+			1;
+		} or do {
+			my $E = $@;
+			print STDERR "Perl module $service_class could not be loaded: $E\n";
+			exit(1);			
+		};
+	}
+	unless ($service_class->isa('Helios::Service')) {
+		print STDERR "$service_class is not a subclass of Helios::Service.\n";
+		exit(1);
+	}
+	return 1;
+}
+
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
 
 =head1 SEE ALSO

@@ -17,7 +17,7 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.52_3950';
+our $VERSION = '2.52_4150';
 
 =head1 NAME
 
@@ -968,15 +968,17 @@ sub initConfig {
 	# only initialize the config system once
 	unless( defined($INIT_CONFIG_CLASS) ) {
 
-		if ( $config_class !~ /^[A-Za-z]([A-Za-z0-9_\-]|:{2})*[A-Za-z0-9_\-]$/ ) {
-			Helios::Error::ConfigError->throw("Requested Config class name is invalid: ".$config_class);
-		}
+#		if ( $config_class !~ /^[A-Za-z]([A-Za-z0-9_\-]|:{2})*[A-Za-z0-9_\-]$/ ) {
+#			Helios::Error::ConfigError->throw("Requested Config class name is invalid: ".$config_class);
+#		}
+#
+#		# attempt class load if it hasn't been already
+#		unless ( $config_class->can('init') ) {
+#			eval "require $config_class";
+#		    Helios::Error::ConfigError->throw($@) if $@;
+#		}
 
-		# attempt class load if it hasn't been already
-		unless ( $config_class->can('init') ) {
-			eval "require $config_class";
-		    Helios::Error::ConfigError->throw($@) if $@;
-		}
+		$self->_require_module($config_class, 'Helios::Config');
 		
 		$config_class->init(
 			CONF_FILE => $self->getIniFile(),
@@ -1035,14 +1037,15 @@ sub initLoggers {
 	foreach my $logger (@loggers) {
 		# init the logger if it hasn't been initialized yet
 		unless ( defined($INIT_LOG_CLASSES{$logger}) ) {
-			if ( $logger !~ /^[A-Za-z]([A-Za-z0-9_\-]|:{2})*[A-Za-z0-9_\-]$/ ) {
-				Helios::Error::LoggingError->throw("Sorry, requested Logger name is invalid: ".$logger);
-			}
-			# attempt to init the class
-			unless ( $logger->can('init') ) {
-		        eval "require $logger";
-		        throw Helios::Error::LoggingError($@) if $@;
-			}
+#			if ( $logger !~ /^[A-Za-z]([A-Za-z0-9_\-]|:{2})*[A-Za-z0-9_\-]$/ ) {
+#				Helios::Error::LoggingError->throw("Sorry, requested Logger name is invalid: ".$logger);
+#			}
+#			# attempt to init the class
+#			unless ( $logger->can('init') ) {
+#		        eval "require $logger";
+#		        throw Helios::Error::LoggingError($@) if $@;
+#			}
+			$self->_require_module($logger,'Helios::Logger');
 			$logger->setConfig($config);
 			$logger->setJobType($jobType);
 			$logger->setHostname($hostname);
@@ -1233,6 +1236,39 @@ custom config classes.
 sub ConfigClass { return undef; }
 
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
+
+
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+
+sub _require_module {
+	my $self = shift;
+	my $class = shift;
+	my $requested_superclass = shift;
+	
+	if ( $class !~ /^[A-Za-z]([A-Za-z0-9_\-]|:{2})*[A-Za-z0-9_\-]$/ ) {
+		Helios::Error::ConfigError->throw("Requested module name is invalid: $class");
+	}
+	unless ( $class->can('init') ) {
+        eval {
+        	my $class_file = $class;
+        	$class_file .= '.pm';
+        	$class_file =~ s/::/\//g;
+			require $class_file;
+			1;
+		} or do {
+			my $E = $@;
+			Helios::Error::ConfigError->throw("Requested module $class could not be loaded: $E");
+		};
+	}
+	if ($requested_superclass && !$class->isa($requested_superclass)) {
+		Helios::Error::ConfigError->throw("$class is not a subclass of $requested_superclass.");
+	}
+	return 1;
+}
+
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
+
+
 
 
 1;

@@ -1,4 +1,8 @@
 Revision history for Perl extension Helios.
+2.52_4150  Fri Oct 12 17:00:00 2012
+	-HELIOS 2.60 RELEASE CANDIDATE 2
+	-Changes to helios.pl and Helios::Service to help prevent module 
+	 loading shenanigans
 2.52_3950  Fri Sep 28 17:00:00 2012
 	-HELIOS 2.60 RELEASE CANDIDATE 1
 	-General source code cleanup and removal of old commented out code
