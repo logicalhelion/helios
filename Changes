@@ -1,4 +1,8 @@
 Revision history for Perl extension Helios.
+2.52_4310  Mon Oct 23 00:00:00 2012
+	-HELIOS 2.60 RELEASE CANDIDATE 3
+	-Helios::Config->parseConfig(): fixed subtle bug where config 
+	 params from database would leak into the file config hashref.
 2.52_4150  Fri Oct 12 17:00:00 2012
 	-HELIOS 2.60 RELEASE CANDIDATE 2
 	-Changes to helios.pl and Helios::Service to help prevent module 

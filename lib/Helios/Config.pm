@@ -12,7 +12,7 @@ use Helios::ObjectDriver::DBI;
 use Helios::ConfigParam;
 use Helios::Error::ConfigError;
 
-our $VERSION = '2.50_3630';
+our $VERSION = '2.52_4310';
 
 =head1 NAME
 
@@ -389,14 +389,16 @@ sub parseConfig {
 	
 	# conf db always gets reparsed
 	$conf_db_config = $self->parseConfDb();
-	
-	# merge configs
-	my $conf = $self->getConfFileConfig();
+
+	# merge configs	
+	# deref conf file hashref so db conf 
+	# doesn't leak into file conf when merged
+	my %conf = %{$self->getConfFileConfig()};
 	while ( my ($key, $value) = each %$conf_db_config ) {
-		$conf->{$key} = $value;
+		$conf{$key} = $value;
 	}
-	$self->setConfig($conf);
-	return $conf;
+	$self->setConfig(\%conf);
+	return \%conf;
 }
 
 
