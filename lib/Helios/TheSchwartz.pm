@@ -6,7 +6,7 @@ use warnings;
 use base qw(TheSchwartz);
 use Carp qw( croak );
 
-our $VERSION = '2.50_2850';
+our $VERSION = '2.60';
 
 sub driver_for {
     my Helios::TheSchwartz $client = shift;

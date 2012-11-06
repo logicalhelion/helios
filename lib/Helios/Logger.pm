@@ -8,7 +8,7 @@ use Helios::Job;
 use Helios::Error::LoggingError;
 use Helios::ObjectDriver::DBI;
 
-our $VERSION = '2.52_3950';
+our $VERSION = '2.60';
 
 =head1 NAME
 

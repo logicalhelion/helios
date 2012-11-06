@@ -2,7 +2,7 @@ package Helios::Error::ConfigError;
 
 use base qw(Helios::Error::BaseError);
 
-our $VERSION = '2.50_3060';
+our $VERSION = '2.60';
 
 1;
 __END__;

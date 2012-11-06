@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use base qw(Data::ObjectDriver::Driver::DBI);
 
-our $VERSION = '2.50_3040';
+our $VERSION = '2.60';
 
 my %Handles;
 sub init_db {

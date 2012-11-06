@@ -11,7 +11,7 @@ use Helios::Error::InvalidArg;
 use Helios::Error::LoggingError;
 use Helios::Error::ConfigError;
 
-our $VERSION = '2.50_3160';
+our $VERSION = '2.60';
 
 1;
 

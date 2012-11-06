@@ -17,7 +17,7 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.52_4150';
+our $VERSION = '2.60';
 
 =head1 NAME
 

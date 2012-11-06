@@ -1,104 +1,58 @@
 Revision history for Perl extension Helios.
-2.52_4310  Mon Oct 23 00:00:00 2012
-	-HELIOS 2.60 RELEASE CANDIDATE 3
-	-Helios::Config->parseConfig(): fixed subtle bug where config 
-	 params from database would leak into the file config hashref.
-2.52_4150  Fri Oct 12 17:00:00 2012
-	-HELIOS 2.60 RELEASE CANDIDATE 2
-	-Changes to helios.pl and Helios::Service to help prevent module 
-	 loading shenanigans
-2.52_3950  Fri Sep 28 17:00:00 2012
-	-HELIOS 2.60 RELEASE CANDIDATE 1
-	-General source code cleanup and removal of old commented out code
-2.50_3630  Wed Sep 05 20:30:00 2012
-	-Mostly a documentation release, with a few minor changes
-	-Helios::Config:  minor parameter changes to parseConfFile(), 
-	 parseConfDb(), DOCUMENTATION! (including a 1st stab at a list of 
-	 ALL Helios built-in config params).
-	-Helios::Service:  documentation cleanup, removal of old commented
-	 out code.	
-	-helios.pl: changed DOUBLE_CLUTCH_INTERVAL config param to 
-	 WORKER_MAX_TTL_WAIT_INTERVAL (nobody would understand "double clutch" 
-	 unless they read the helios.pl source code).
-2.50_3220  Tue Aug 07 22:00:00 2012
-	-Helios::Service: fixes to getConfigFrom*() methods so they 
-	 function correctly with Helios::Config.  NOTE THESE METHODS WILL 
-	 BE DEPRECATED IN THE NEXT PRODUCTION RELEASE!
-	-Helios::Config: change to parseConfig() to call init() if the 
-	 class has not actually been initialized yet.
-	-Added README.pod to improve project appearance on GitHub
-2.50_3161  Sat Aug 04 21:15:00 2012
-	-Helios::Service->dbConnect(): new version to properly handle 
-	 "options" config param for databases, properly separate Helios 
-	 collective database connections from connections to other databases.
-	 Updated documentation.
-	-Helios::Service:  Updated copyright info in several places.
-	-helios_job_submit.pl & helios_log_clean.pl:  updated to use new 
-	 configuration subsystem.
-2.50_3160  Sat Aug 04 14:11:00 2012
-	Significant changes to configuration subsystem.
-	-Helios::Config->init() now clears all already parsed config 
-	 data structures.  The init() method should normally only be 
-	 called once.
-	-Helios::Service: significant changes to how Helios::Service 
-	 interacts with Helios::Config.  
-	 -Added ConfigClass() method to specify alternate config modules 
-	  (like JobClass() and Helios::Job).  
-	 -Added initConfig() method to call init() for whatever config 
-	  module is specified and $INIT_CONFIG_CLASS to keep track of what
-	  config module has been initialized.  
-	 -The prep() method will now only call initConfig() to initialize 
-	  the config module once, but will always call parseConfig() to 
-	  update current config parameters (unless a cached config was 
-	  given when LAZY_CONFIG_UPDATE is active).
-	 -getConfigFromIni() and getConfigFromDb() have been rewritten 
-	  to use Helios::Config (or whatever ConfigClass() is set).
-	  However, use of these methods is now deprecated, as 
-	  Helios::Config and its subclasses can be used directly.
-	-t/1.t and t/2.t have been updated to test Helios::Config 
-	 functionality. 
-2.50_3070  Sun Jul 29 16:37:00 2012
-	-helios.pl: Added DOUBLE_CLUTCH_INTERVAL config param to support
-	 WORKER_MAX_TTL functionaity.  Updated copyright info.
-2.50_3060  Sat Jul 28 17:34:00 2012
-	-Fixed Helios::Config->init() RT#78616
-	-Added Helios::Error::ConfigError exception to throw in case of 
-	 configuration problems.
-2.50_3040  Thu Jul 26 23:59:00 2012
-	-changes to Helios::ObjectDriver::DBI and helios.pl to properly
-	 handle database connections between parent and child processes
-	 (prevents children from attempting to disconnect parent db
-	 connections)
-	-helios.pl: changed new worker_blitz_factor param to 
-	 WORKER_BLITZ_FACTOR for consistency with OVERDRIVE, HOLD, etc.
-	 WORKER_BLITZ_FACTOR is now dynamically updated instead of set 
-	 only at runtime.
-	-Updated lib/Bundle/Helios.pm so it's proper package name is 
-	 Bundle::Helios, not Bundle::Helios::Generic (oops).
-2.50_2910  Mon Jul 16 21:18:00 2012
-	-Helios::Service: changes to dbConnect(), jobsWaiting() to prevent 
-	 clobbering of Helios::ObjectDriver::DBI connections in some 
-	 cases.
-	-Helios::Service: replaced try {} otherwise block with 
-	 eval {} or do in getFuncidFromDb().
-	-Updated copyright notices in README and Helios.pm to include
-	 notifications of Logical Helion and Six Apart code 
-	 (the notices were intact on the code in question).
-2.50_2860  Sun Jul 15 22:14:00 2012
-	-NEW Helios::Config module to handle parsing of configuration 
-	 information, and modifications to Helios::Service and helios.pl 
-	 to use it instead of the old getConfigFromIni() and 
-	 getConfigFromDb() methods.
-2.50_2850  Wed Jul 11 23:36:00 2012  
-	-Helios::TheSchwartz and Helios::ObjectDriver::DBI added to 
-	 implement DBI-level database connection caching.  
-	 Helios::Service, Helios::Logger, and Helios::Job and helios.pl 
-	 have been changed to use the new connection handling scheme.
-	-Changed Bundle::Helios::Generic to Bundle::Helios (since the 
-	 RedHat-specific bundle has been eliminated).
-	-helios.pl: added worker_blitz_factor configuration parameter to 
-	 allow MAX_WORKERS workers to launch before there are that many 
-	 jobs available in the job queue.
+2.60  Mon Nov 06 00:00:00 2012
+	-Significant changes to Helios database connection handling, 
+	 including a specialized Data::ObjectDriver class and TheSchwartz 
+	 extensions.  Helios now aggressively caches database connections
+	 at the DBI layer and uses DBI features to properly handle 
+	 database connect/disconnect between daemon and worker processes. 
+	 These improvements result in significant performance increases, 
+	 especially when using Oracle as a collective database.  One 
+	 user's application experienced job throughput increases of ~70%. 
+	 MySQL collectives should also experience speed increases and 
+	 a reduced number of open connections.
+	-NEW Helios::Config modular configuration API.  Similar to 
+	 Helios::Job and Helios::Logger, Helios::Config defines the basic 
+	 Helios configuration API while also serving as a base class to 
+	 build custom configuration modules for Helios applications.  To 
+	 define a custom configuration API for a Helios application, 
+	 specify a ConfigClass() method in your Helios::Service subclass. 
+	 Auxiliary application pieces such as scripts and cronjobs can use 
+	 Helios::Config to get the application's configuration without 
+	 needing to instantiate the application class and calling the 
+	 prep() method as in the past.  Helios::Config makes the Helios 
+	 configuration API more robust, modular, and flexible.  See the 
+	 Helios::Config POD for more details.
+	 NOTE: Helios::Service->getConfigFrom*() methods are now 
+	 deprecated in favor of Helios::Config->parseConfig().  The prep()
+	 method uses Helios::Config and will continue to be supported.
+	-NEW Helios exception class for configuration errors:  
+	 Helios::Error::ConfigError.
+	-NEW WORKER_MAX_TTL_WAIT_INTERVAL parameter to fine-tune use of 
+	 WORKER_MAX_TTL with specific applications.
+	-NEW WORKER_BLITZ_FACTOR configuration parameter to launch 
+	 more workers sooner.
+	-NEW configuration parameter documentation.  All Helios 
+	 out-of-box configuration parameters are now defined in a section 
+	 of the Helios::Config POD.  For more information about the new 
+	 configuration parameters or any others, check the Helios::Config 
+	 POD!
+	-Helios::Service->dbConnect() has been updated to work with the 
+	 new database connection caching scheme and to better support 
+	 DBI options.
+	-Bundle::Helios::Generic has been changed to Bundle::Helios and 
+	 can be used to install Helios prerequisite modules with generic 
+	 Perl installs.  Bundle::Helios::RedHat was dropped in 2.41.  See 
+	 the INSTALL.* files in the main distribution directory to 
+	 determine the right type of install method for your environment.
+	-Improved module loading code.
+	-Removal of most instances of Error module's try {} catch {} 
+	 blocks in favor of Perl generic eval {} or do {}.
+	-More tests.
+	-Updated INSTALL.* files for generic Perl and CPAN installs and 
+	 Red Hat/CentOS 6.x.  BSD, Mac OS X, and other *nix should use the 
+	 generic install instructions.  (Debian and Ubuntu based 
+	 instructions continue to be the quickest and easiest.  Thank you 
+	 Debian for your excellent Perl and CPAN packaging!)
 2.41  Sun Jun 03 22:00:00 2012
 	-Official Oracle support!  DDL for a Helios Oracle schema is in 
 	 'sql/helios_schema_oracle.sql'.  Please note: 

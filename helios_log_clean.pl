@@ -8,7 +8,7 @@ use Getopt::Long;
 use Helios::Service;
 use Helios::Error;
 
-our $VERSION = '2.52_3950';
+our $VERSION = '2.60';
 
 =head1 NAME
 
