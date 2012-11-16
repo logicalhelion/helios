@@ -1,9 +1,9 @@
 UBUNTU/DEBIAN INSTALL
 
-It is relatively easy to install Helios on Debian and Ubuntu systems as Perl is
-relatively up-to-date and almost all of Helios's dependencies are packaged as 
-.deb files.  The following installation procedure was tested and shown to 
-work on Ubuntu 11.04.
+It is very easy to install Helios on Debian- and Ubuntu-based systems as Perl 
+is relatively up-to-date and almost all of Helios's dependencies are 
+pre-packaged and ready to go.  The following installation procedure was tested 
+and shown to work on Ubuntu 10.04 LTS, 11.04, and 12.04 LTS.
 
 
 1) Install MySQL
@@ -27,7 +27,7 @@ that create the 'helios' user to set an appropriate password.  Once the schema
 file is ready, issue the following command to create the helios_db schema and 
 helios user:
 
-    mysql -u root -p < sql/helios_schema.sql
+    mysql -u root -p < sql/helios_schema_mysql.sql
 
 You'll be prompted for your MySQL root password, then your helios_db schema 
 will be created.
@@ -48,7 +48,7 @@ apt-get.  Issue the following apt-get commands as the root user or via sudo:
 The remaining dependency is Pod::Parser, which can be easily installed using
 the CPAN shell.  Again as root or using sudo, issue these commands:
 
-    sudo perl -MCPAN -eshell
+    perl -MCPAN -eshell
     install Pod::Parser
 	exit
 	
@@ -74,19 +74,26 @@ Make sure the path is an absolute path!  You'll probably want to add the line
 above to the profile of the user your services will run as so Helios will 
 always know where its configuration file is.
 
-Once you're done, you can install the Helios package by issuing the following 
-commands:
+Once you're done, you can either install Helios using the CPAN shell or 
+manually from this distribution.  To use the CPAN shell, use sudo (or 
+become the root user) and issue the following commands:
+
+    sudo perl -MCPAN -eshell
+    install Helios
+    
+To install Helios manually from this distribution, use sudo or become the root
+user and issue these commands:
 
     perl Makefile.PL
     make
     make test
-    sudo make install
+    make install
 
 If you want to install Helios in a private user directory instead of a path 
 available to all users, you can use the INSTALL_BASE option of Makefile.PL:
 
-    perl Makefile.PL INSTALL_BASE=/home/helios
-
+    perl Makefile.PL INSTALL_BASE=/home/myhome/helios
+    
 
 4) Install Apache HTTP Server (optional)
 

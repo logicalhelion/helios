@@ -6,43 +6,80 @@ for several operating systems.  Check this distribution to see if there is
 another INSTALL.* file for your specific operating system.
 
 The general steps involve:
-* Install MySQL & helios_db Database Schema
-* Configure helios.ini file
-* Install Helios & dependencies
-* Install Apache or other web server (optional; only to submit jobs via HTTP)
+* Install Helios database schema
+* Install expat2.
+* Configure helios.ini file.
+* Install Helios & dependencies.
+* Install Apache or other web server & submitJob.pl script. (optional)
 
-In general, you should probably install your MySQL database, then install 
-Helios and its prerequisites on one server, and then install Apache and the 
-job submission CGI if you want to submit jobs via HTTP.  Once you have Helios 
-running on one host, installing and running Helios on other hosts will be 
-easier.
+In general, once you have installed your database software and schema, you 
+should then install Helios and its prerequisites on one server.  Once you have 
+Helios running on one host, installing and running it on other hosts will be 
+easier.  Plus, if you are running in a virtualized environment, you will then 
+have the option of simply cloning your working Helios VM to add new machines 
+rather than install everything from scratch repeatedly.
 
 
 GENERIC INSTRUCTIONS
 
 The following instructions should work to install Helios on most Unix-style 
-platforms.  If your platform has some of these things prepackaged (MySQL and
-Apache, hopefully), you can save yourself some time by using the prepackaged 
-versions.
+platforms.  If your platform has some of these things prepackaged (MySQL,
+Apache, and expat2, hopefully), you can save yourself some time by using the 
+prepackaged versions.
 
 
-1) Install MySQL & helios_db Database Schema
+1) Install MySQL & helios_db Database Schema.
 
 You'll need to install MySQL and create a database and a user that all the 
-Helios hosts can log into.  Once you have MySQL up and running, you can use 
-the sql/helios_schema.sql file to create the Helios database schema.  Open the 
-file in a text editor, uncomment the lines that create the helios db user, and 
-edit them as appropriate for your security situation.  Then use the following 
-line to create the helios_db database:
+Helios hosts can log into.  Once you have your MySQL server and clients 
+installed and running, you can use the sql/helios_schema_mysql.sql file to 
+create the Helios database schema.  Open the file in a text editor, edit the 
+lines that create the helios db user for your security situation.  Then issue 
+the following command to create the helios_db database:
 
-    mysql -u root -p < sql/helios_schema.sql
+    mysql -u root -p < sql/helios_schema_mysql.sql
 
 You'll be prompted for the MySQL root user's password, then the helios_db 
 database will be created with helios database user and all the tables 
 necessary for the Helios system.
 
+-- OR --
 
-2) Configure helios.ini
+1) Install Oracle & Helios Database Schema.
+
+If you are using Oracle for your Helios collective database you will need to 
+install and configure Oracle on a server and install Oracle Instant Client, 
+DBI, and DBD::Oracle on the system(s) you want to want to use as Helios worker 
+hosts.  Make sure you can use sqlplus and DBD::Oracle to connect to your 
+database before proceeding.
+
+Once your Oracle client and DBD::Oracle client software is properly installed 
+and configured, adapt the sql/helios_schema_oracle.sql to fit your Oracle 
+environment.  You will need to create a database user for the Helios hosts to 
+use to connect to the database, and (again, depending on your environment) you 
+may need to create a tablespace as well.  Once the schema DDL is appropriately 
+adapted to your environment, use sqlplus, SQL Developer, or another SQL tool 
+to create the Helios database structures.
+
+
+2) Install Expat2 development libraries.
+
+The XML parser Helios relies on most often requires the Expat2 XML parsing 
+library, but unfortunately the Perl CPAN client is unable to install this 
+for you.  Most often this library will already be packaged for your operating 
+system, either as a package or a separate downloadable binary.  In fact, you 
+may already have it installed.  Check with your operating system documentation 
+or the Expat website (http://expat.sourceforge.net/) for more information on 
+installing it on your platform.  If you are using a pre-packaged version, make 
+sure you install the development library package (often packaged with a -dev or 
+-devel suffix) as well as the core package.
+
+If you have trouble later in the installation when installing XML::Simple or 
+one of its dependencies via the CPAN shell, it is probably because Expat is not
+installed or is in a location your Perl interpreter cannot find.
+
+
+3) Configure helios.ini.
 
 Just about everything in Helios depends on a helios.ini file to specify 
 initial settings and connection information for the Helios database.  The 
@@ -51,8 +88,8 @@ the location specified by the HELIOS_INI environment variable, so adding
 
     export HELIOS_INI=/path/to/helios.ini
 
-to either your global user profile or the profile of the user you intend to run     
-Helios under is probably a good idea.  
+to either your global user profile or the .profile of the user you intend to 
+run Helios as is probably a good idea.  
 
 There is a sample helios.ini file included in the Helios distribution to help 
 guide your initial install.  To specify the Helios database connection, specify 
@@ -63,7 +100,7 @@ There are other parameters you can specify; check the helios.pl man page for
 more information. 
 
 
-3) Install Helios & CPAN dependencies
+4) Install Helios & CPAN dependencies.
 
 Helios requires the following modules to be installed:
 
@@ -75,10 +112,12 @@ Helios requires the following modules to be installed:
     Config::IniFiles
     Error
     Pod::Usage
+    Test::Simple
 
 You can download and install these packages manually, or you can use the 
-CPAN shell.  As your root user or via sudo, issue the following commands to 
-install Helios and its dependencies:
+CPAN shell (the preferred method).  To use the CPAN shell, as your root user 
+or via sudo, issue the following commands to install Helios and its 
+dependencies:
 
 	perl -MCPAN -eshell
 	install Data::ObjectDriver
@@ -89,19 +128,19 @@ install Helios and its dependencies:
 	install Config::IniFiles
 	install Helios
 
-You may also try the Helios generic CPAN bundle.  It may not work in all 
+You may also try the Helios CPAN bundle.  It may not work in all 
 cases on all systems, but it may save you some time:
 
 	perl -MCPAN -eshell
-	install Bundle::Helios::Generic
+	install Bundle::Helios
 
-If the HELIOS_INI environment variable is set, make test will 
-attempt to use the information in the .ini file to connect to the specified 
-Helios database and read configuration parameters from it.  If HELIOS_INI isn't 
-set, that test will be skipped.
+If the HELIOS_INI environment variable is set, the Helios 'make test' install 
+phase will attempt to use the information in the .ini file to connect to the 
+specified Helios database and read configuration parameters from it.  If 
+HELIOS_INI isn't set, that test will be skipped.
  
  
-4) Final checks 
+5) Final Checks of the Base Helios System. 
 
 At this point, your Helios host should be ready to service jobs.  If you want 
 to do further tests, you can use Helios::TestService.  Helios::TestService 
@@ -111,9 +150,9 @@ Helios host is configured properly, you can move on to installing Helios on the
 next host in your collective.
 
 
-5) Install Apache & jobSubmit.pl CGI (optional)
+6) Install Apache & submitJob.pl CGI (optional)
 
-Install Apache on the host(s) you want to send HTTP to submit jobs.  This 
+Install Apache on the host(s) you want to send HTTP to submit jobs.  The 
 server(s) will need to have the same database access as the other Helios 
 hosts, regardless of whether it will be running jobs.  It's probably best to 
 simply use your first host for this, at least until your get the rest of your
