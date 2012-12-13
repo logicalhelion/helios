@@ -1156,7 +1156,7 @@ sub workers_to_launch {
 	my $waiting_jobs = shift;
 	my $running_workers = shift;
 	my $max_workers = shift;
-	my $wlp = defined($params{WORKER_LAUNCH_PATTERN}) ? $params{WORKER_LAUNCH_PATTERN} : $DEFAULTS{WORKER_LAUNCH_PATTERN};
+	my $wlp = defined($params->{WORKER_LAUNCH_PATTERN}) ? $params->{WORKER_LAUNCH_PATTERN} : $DEFAULTS{WORKER_LAUNCH_PATTERN};
 
 	# how many workers are we able to launch?
 	my $available_workers = $max_workers - $running_workers;
