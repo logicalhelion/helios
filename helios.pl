@@ -230,7 +230,8 @@ our %DEFAULTS = (
     ZERO_SLEEP_INTERVAL => 10,
     REGISTRATION_INTERVAL => 60,
     WORKER_BLITZ_FACTOR => 1,
-    WORKER_MAX_TTL_WAIT_INTERVAL => 20
+    WORKER_MAX_TTL_WAIT_INTERVAL => 20,
+	PRIORITIZE_JOBS => 0
 );
 our $CLEAN_SHUTDOWN = 1;				# used to determine if we should remove the PID file or not (at least for now)
 
@@ -772,7 +773,10 @@ sub launch_worker {
     # just in case this would cause a problem in worker process
     $SIG{CHLD} = 'DEFAULT';
     $SIG{TERM} = 'DEFAULT';
-	my $client = Helios::TheSchwartz->new(databases => $DATABASES_INFO);
+	my $client = Helios::TheSchwartz->new(
+		databases => $DATABASES_INFO,
+		prioritize => $params->{PRIORITIZE_JOBS} ? $params->{PRIORITIZE_JOBS} : $DEFAULTS{PRIORITIZE_JOBS}
+	);
 	$client->can_do($worker_class);
 	my $return;
 	if ( defined($params->{OVERDRIVE}) && $params->{OVERDRIVE} == 1 ) {
