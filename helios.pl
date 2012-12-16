@@ -566,10 +566,23 @@ MAIN_LOOP:{
 											$ck->{$_}->{InactiveDestroy} = 1;
 										}
 										%$ck = ();
+
+										# launch the worker
+										# launch a persistent worker if MIN_WORKERS is set 
+										# and we're below that limit
+										# otherwise, launch a normal worker
+										if ( defined($params->{MIN_WORKERS}) &&
+											scalar(keys %workers) < $params->{MIN_WORKERS} )
+										{
+											launch_min_worker(
+												SERVICE_CLASS => $worker_class,
+												PRIORITIZE    => $params->{PRIORITIZE_JOBS}
+											);
+										} else {
+											launch_worker();
+										}
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
-										# NOW, launch the worker
-										launch_worker();
 							} elsif ($! == EAGAIN) {
 								# EAGAIN is the supposedly recoverable fork error
 									sleep 2;
