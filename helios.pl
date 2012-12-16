@@ -783,6 +783,39 @@ sub launch_worker {
 	exit($return);
 }
 
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+=head2 launch_min_worker(%params)
+
+ SERVICE_CLASS name of service class/jobtype
+ PRIORITIZE    prioritization setting
+
+=cut
+
+sub launch_min_worker {
+	my %args = @_;
+	my $return;
+    $SIG{CHLD} = 'DEFAULT';
+    $SIG{TERM} = 'DEFAULT';
+	my $schwartz = Helios::TheSchwartz->new(
+		databases => $DATABASES_INFO,
+		prioritize => $args{PRIORITIZE}
+	);
+	$schwartz->can_do($args{SERVICE_CLASS});
+	WORKER_LOOP: {
+		$params = Helios::Config->parseConfig();
+
+		if ( $worker->shouldExitOverdrive() ) {
+			exit(0);
+		}
+
+		$return = $schwartz->work_until_done();
+		sleep 1;
+		next WORKER_LOOP;
+	}
+	
+}
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
+
 
 =head1 SIGNAL HANDLERS
 
