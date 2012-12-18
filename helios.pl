@@ -806,7 +806,8 @@ sub launch_worker {
 
 sub launch_min_worker {
 	my %args = @_;
-	my $return;
+	my $return = 0;
+	my $start_time = time();
     $SIG{CHLD} = 'DEFAULT';
     $SIG{TERM} = 'DEFAULT';
 	my $schwartz = Helios::TheSchwartz->new(
@@ -814,18 +815,30 @@ sub launch_min_worker {
 		prioritize => $args{PRIORITIZE}
 	);
 	$schwartz->can_do($args{SERVICE_CLASS});
-	WORKER_LOOP: {
+	# BEGIN WORKER LOOP
+	while (1) {
 		$params = Helios::Config->parseConfig();
 
-		if ( $worker->shouldExitOverdrive() ) {
-			exit(0);
+		# shutdown the worker if we've been told 
+		# by a HALT, HOLD, or we've exceeded WORKER_MAX_TTL
+		if (	
+				defined($params->{HALT}) ||
+				( defined($params->{HOLD}) && $params->{HOLD} == 1 ) ||
+				( defined($params->{WORKER_MAX_TTL}) && 
+					time() - $start_time >= $params->{WORKER_MAX_TTL}
+				)
+		 	) {
+			exit($return);
 		}
 
 		$return = $schwartz->work_until_done();
 		sleep 1;
-		next WORKER_LOOP;
-	}
-	
+	} # END WORKER LOOP
+
+	# we actually should reach here, but if we do, we need to exit() to prevent
+	# the worker from returning to the MAIN_LOOP and transmuting into another 
+	# service daemon
+	exit($return);	
 }
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
