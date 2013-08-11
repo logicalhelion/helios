@@ -17,7 +17,7 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.60';
+our $VERSION = '2.601_2013081101';
 
 =head1 NAME
 
@@ -100,9 +100,21 @@ sub work {
 	my $job;
 	my $job_init_error;
 	eval {
-		$job = $class->JobClass() ? $class->JobClass()->new($schwartz_job) : Helios::Job->new($schwartz_job);
+		# turn the schwartz job we were given into: 
+		# a custom job object defined by the app class,
+		# or a basic Helios::Job object if the app didn't specify anything special
+		if ( $class->JobClass() ) {
+			# instantiate a custom job object
+			$job = $class->JobClass()->new($schwartz_job);
+		} else {
+			# nothing fancy, just a normal Helios::Job object
+			$job = Helios::Job->new($schwartz_job);
+		}
 		1;
 	} or do {
+		# uhoh, there was a problem turning the schwartz job into a Helios job
+		# note that, and when the worker is fully prepped, 
+		# we'll take care of the problem
 		$job_init_error = "$@";
 	};
 # END CODE Copyright (C) 2013 by Logical Helion, LLC.
@@ -147,11 +159,10 @@ sub work {
 		# if a job initialization error occurred above,
 		# we want to log the error and then exit
 		# trying to further job setup and/or run the job is ill-advised
-		# (this is done here rather than immediately after job init
-		#  so we can setup the worker probably so we can log the error)
+		# (we have to wait and do it here so we can properly log the error)
 		if ( defined($job_init_error) ) {
 			if ($self->debug) { print "JOB INITIALIZATION ERROR: ".$job_init_error."\n"; }
-			$self->logMsg(LOG_ERR, "JOB INITIALIZATION ERROR: $job_init_error");
+			$self->logMsg(LOG_CRIT, "JOB INITIALIZATION ERROR: $job_init_error");
 			exit(1);
 		}
 # END CODE Copyright (C) 2013 by Logical Helion, LLC.
