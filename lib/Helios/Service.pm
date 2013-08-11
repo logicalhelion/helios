@@ -95,7 +95,17 @@ sub retry_delay { $_[0]->RetryInterval(); }
 sub work {
 	my $class = shift;
 	my $schwartz_job = shift;
-	my $job = $class->JobClass() ? $class->JobClass()->new($schwartz_job) : Helios::Job->new($schwartz_job);
+#[]	my $job = $class->JobClass() ? $class->JobClass()->new($schwartz_job) : Helios::Job->new($schwartz_job);
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+	my $job;
+	my $job_init_error;
+	eval {
+		$job = $class->JobClass() ? $class->JobClass()->new($schwartz_job) : Helios::Job->new($schwartz_job);
+		1;
+	} or do {
+		$job_init_error = "$@";
+	};
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 	$WORKER_START_TIME = $WORKER_START_TIME ? $WORKER_START_TIME : time();     # for WORKER_MAX_TTL 
 	my $return_code;
 	my $args;
@@ -132,6 +142,19 @@ sub work {
                 $CACHED_CONFIG_RETRIEVAL_COUNT = 1;     # "prime the pump"
             }	    
         }
+
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+		# if a job initialization error occurred above,
+		# we want to log the error and then exit
+		# trying to further job setup and/or run the job is ill-advised
+		# (this is done here rather than immediately after job init
+		#  so we can setup the worker probably so we can log the error)
+		if ( defined($job_init_error) ) {
+			if ($self->debug) { print "JOB INITIALIZATION ERROR: ".$job_init_error."\n"; }
+			$self->logMsg(LOG_ERR, "JOB INITIALIZATION ERROR: $job_init_error");
+			exit(1);
+		}
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 	    	    
 		$job->debug( $self->debug );
 		$job->setConfig($self->getConfig());
@@ -1295,7 +1318,7 @@ Portions of this software, where noted, are
 Copyright (C) 2011-2012 by Andrew Johnson.
 
 Portions of this software, where noted, are
-Copyright (C) 2012 by Logical Helion, LLC.
+Copyright (C) 2012-3 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,
