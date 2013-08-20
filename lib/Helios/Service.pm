@@ -17,7 +17,7 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.601_2013081101';
+our $VERSION = '2.601_2013081901';
 
 =head1 NAME
 
@@ -95,8 +95,8 @@ sub retry_delay { $_[0]->RetryInterval(); }
 sub work {
 	my $class = shift;
 	my $schwartz_job = shift;
-#[]	my $job = $class->JobClass() ? $class->JobClass()->new($schwartz_job) : Helios::Job->new($schwartz_job);
 # BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+	# 2013-08-11: Rewritten job initialization code to catch job init errors, including [RT79690].
 	my $job;
 	my $job_init_error;
 	eval {
@@ -156,10 +156,12 @@ sub work {
         }
 
 # BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+		# 2013-08-11: Rewritten job initialization code to catch job init errors, including [RT79690].
 		# if a job initialization error occurred above,
-		# we want to log the error and then exit
-		# trying to further job setup and/or run the job is ill-advised
-		# (we have to wait and do it here so we can properly log the error)
+		# we want to log the error and then exit the worker process
+		# trying to further job setup and/or run the job is ill-advised,
+		# and if we have to exit the process so TheSchwartz doesn't force the job to failure.
+		# (but we have to wait and do it here so we can properly log the error)
 		if ( defined($job_init_error) ) {
 			if ($self->debug) { print "JOB INITIALIZATION ERROR: ".$job_init_error."\n"; }
 			$self->logMsg(LOG_CRIT, "JOB INITIALIZATION ERROR: $job_init_error");
