@@ -18,7 +18,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
 use Helios::Config;
 
-our $VERSION = '2.60';
+our $VERSION = '2.60_2013081901';
 
 =head1 NAME
 
@@ -477,6 +477,12 @@ MAIN_LOOP:{
 				if ( ($REGISTRATION_LAST + $REGISTRATION_INTERVAL) < time() ) {
 					register();
 					$REGISTRATION_LAST = time();
+					# [LH] 2012-12-11: Copied WORKER_MAX_TTL/double_clutch() call from HOLD code below 
+					# to enable WORKER_MAX_TTL in Normal Mode as well as Hold Mode.  [RT81709]
+					if ( defined($params->{WORKER_MAX_TTL}) && $params->{WORKER_MAX_TTL} > 0 
+					       && scalar(keys %workers) ) {
+					    double_clutch();
+					}
 				}
 		
 				# HOLDING JOB PROCESSING
@@ -735,18 +741,22 @@ The double_clutch() function implements the WORKER_MAX_TTL functionality.  If
 the WORKER_MAX_TTL parameter is set for a service, the service daemon 
 periodically calls double_clutch() to check the workers and clean up any that 
 have run too long.  The double_clutch() function waits a certain amount of time 
-(zero_launch_interval x2 secs), then checks the amount of time each of the 
+(WORKER_MAX_TTL_WAIT_INTERVAL secs), then checks the amount of time each of the 
 running workers has been active.  If a worker has been running longer than the 
 service's WORKER_MAX_TTL, the worker is killed (by sending it a SIGKILL signal).
 
 =cut
 
 sub double_clutch {
-    # sleep $WORKER_MAX_TTL_WAIT_INTERVAL secs before we double check on workers
-	sleep $WORKER_MAX_TTL_WAIT_INTERVAL;
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+	# check each running worker to see if it has been running too long
+	# (too long:  WORKER_MAX_TTL seconds + WORKER_MAX_TTL_WAIT_INTERVAL "fudge factor")
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
     foreach my $pid (keys %workers) {
-        my $time_of_death = $workers{$pid} + $params->{WORKER_MAX_TTL};
-        if ( time() > $time_of_death ) {
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+        my $time_to_die = $workers{$pid} + $params->{WORKER_MAX_TTL} + $WORKER_MAX_TTL_WAIT_INTERVAL;
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
+        if ( time() > $time_to_die ) {
             kill 9, $pid;
             delete $workers{$pid};
             $worker->logMsg(LOG_ERR, "Killed process $pid (exceeded WORKER_MAX_TTL)");
