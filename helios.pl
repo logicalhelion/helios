@@ -8,9 +8,11 @@ use File::Basename ();
 use File::Spec;
 use Getopt::Long;
 use POSIX;
+use Sys::Hostname;
+# [LH] 2013-08-04:  Added Fcntl for better pidfile locking.  [RT81914]
+use Fcntl qw(:DEFAULT :flock);
 
 use Error qw(:try);
-use Sys::Hostname;
 
 use Helios;
 use Helios::Error;
@@ -18,7 +20,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
 use Helios::Config;
 
-our $VERSION = '2.60_2013081901';
+our $VERSION = '2.60_2013081904';
 
 =head1 NAME
 
@@ -245,6 +247,8 @@ our $REGISTRATION_INTERVAL = 60;		# used to periodically register daemon in data
 our $REGISTRATION_LAST = 0;
 
 our $PID_FILE;							# globally accessible PID file location
+# [LH] 2013-08-04:  Added $PID_FILE_H as a filehandle for better pidfile locking.  [RT81914]
+our $PID_FILE_H; 						# globally accessible PID file handle
 our $SAFE_MODE_DELAY = 45;				# SAFE MODE support; number of secs to wait
 our $SAFE_MODE_RETRIES = 5;				# SAFE MODE support; number of times to retry 
 
@@ -923,6 +927,9 @@ sub terminator {
 }
 
 
+# [LH] 2013-08-04:  Added 2nd paragraph to write_pid_file() documentation to 
+# help explain how new running_process_check()/write_pid_file() works.
+
 =head1 PID FILE FUNCTIONS
 
 =head2 write_pid_file($pid_path)
@@ -933,25 +940,33 @@ replaced by underscores.  For example, the PID file for a service class named
 'SearchIndex::LoadTestWorker' will be named "searchindex__loadtestworker.pid".  To change the 
 location where the PID file is created, set the pid_path option in helios.ini.
 
+The running_process_check() function should be run before this function to 
+exclusively lock the PID file.
+
 =cut
 
 sub write_pid_file {
-	my $pid_path = shift;
-	my $fh;
-	# Determine where to put the PID file
-	unless (defined($pid_path) ) {
-		$pid_path = $DEFAULTS{PID_PATH};
-	}
+# BEGIN CODE Copyright (C) 2013 Logical Helion, LLC.	
+	# [LH] 2013-08-04:  Rewrote write_pid_file() to take advantage of the 
+	# exclusive lock on the pidfile created by running_process_check().
+	# [RT81914]
 
-	# Determine PID filename
-	my $filename = lc($worker_class);
-	$filename =~ s/\:/\_/g;
-	$PID_FILE = File::Spec->catfile($pid_path, $filename.'.pid');
-	if ($DEBUG_MODE) { print "Writing pid file $PID_FILE\n";	}
-	
-	open $fh, ">", $PID_FILE or do { $worker->errstr("Cannot write PID file $PID_FILE: ".$!); return undef; };
-	print $fh $$;
-	close $fh;
+	# Rewind the PID file handle opened by running_process_check(),
+	# write our own PID in the file, and 
+	# signal to the calling routine it's OK to finish start up.
+	seek($PID_FILE_H, 0, 0) or do {
+		$worker->errstr("Cannot rewind $PID_FILE: ".$!);
+		close($PID_FILE_H);
+		return 0;
+	};
+	print $PID_FILE_H $$,"\n";
+	truncate($PID_FILE_H, tell($PID_FILE_H)) or do {
+		$worker->errstr("Cannot truncate $PID_FILE after writing PID: ".$!);
+		close($PID_FILE_H);
+		return 0;
+	};
+	close($PID_FILE_H);
+# END CODE Copyright (C) 2013 Logical Helion, LLC
 
 	return 1;
 }
@@ -974,12 +989,19 @@ sub remove_pid_file {
 }
 
 
+# [LH] 2013-08-04: Added 2nd paragraph below to explain how new running_process_check() works.
+
 =head2 running_process_check($pid_path)
 
 Given the pid_path, check to see if a $pid_file for the loaded service class exists and, if it does,
 check to see if that process is still running.  If the file doesn't exist or it does but isn't 
 running, this function returns 0.  If the process is still running, record the error and return the 
 running process's pid to signal that service startup should halt. 
+
+If the PID file does not exist, running_process_check() creates it.  The PID 
+file is then exclusively locked to prevent other daemons for the same service 
+from writing to it.  This helps ensure multiple Helios daemons for same 
+service will not start up at the same time.
 
 =cut
 
@@ -997,15 +1019,37 @@ sub running_process_check {
 	# check if this file exists
 	# if it does, check if that process is still running
 	# bail if it is
-	if (-r $PID_FILE) {
-		my $pid = `cat $PID_FILE`;
-		my $pinfo = `ps -p $pid|wc -l`;
-		# is this process still running?
-		if ($pinfo > 1) {
-			$worker->errstr($worker->getJobType()." service daemon already running (process ".$pid.").");
-			return $pid;
-		} 
+# BEGIN CODE Copyright (C) 2013 Logical Helion, LLC.
+	# [LH] 2013-08-04:  Rewrote this piece of running_process_check() to put 
+	# an exclusive lock on the pidfile (also creating it if it doesn't exist).
+	# Also switched to using the relatively portable Perl kill() instead of 
+	# grep-ing shell output to determine whether the process in the pidfile
+	# is still running.  [RT81914]
+	sysopen($PID_FILE_H, $PID_FILE, O_RDWR | O_CREAT) or do {
+		$worker->errstr("Cannot open $PID_FILE: ".$!);
+		return 1;		
+	};
+	flock($PID_FILE_H, LOCK_EX | LOCK_NB) or do {
+		$worker->errstr("Cannot lock $PID_FILE (another daemon already starting for this service?): ".$!);
+		close($PID_FILE_H);
+		return 1;
+	};
+	
+	my $pid_in_file = <$PID_FILE_H>;
+	chomp $pid_in_file if defined($pid_in_file);
+	# if there's an actual, valid pid in the file, 
+	# check to see if that process is still running
+	if ( defined($pid_in_file) && $pid_in_file !~ /\D/ && $pid_in_file > 1) {
+		my $proc_count = kill 0, $pid_in_file;
+		if ($proc_count > 0) {
+			$worker->errstr($worker->getJobType()." service daemon already running (process ".$pid_in_file.").");
+			close($PID_FILE_H);
+			return $pid_in_file;
+		}
 	}
+	
+# END CODE Copyright (C) 2013 Logical Helion, LLC.
+	
 	return 0;
 }
 
@@ -1167,7 +1211,7 @@ Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
 Copyright (C) 2007-9 by CEB Toolbox, Inc.
 
 Portions of this software, where noted, are
-Copyright (C) 2012 by Logical Helion, LLC.
+Copyright (C) 2012-2013 by Logical Helion, LLC.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,
