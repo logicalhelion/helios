@@ -18,7 +18,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
 use Helios::Config;
 
-our $VERSION = '2.60_5021';
+our $VERSION = '2.60_2013081901';
 
 =head1 NAME
 
@@ -477,6 +477,8 @@ MAIN_LOOP:{
 				if ( ($REGISTRATION_LAST + $REGISTRATION_INTERVAL) < time() ) {
 					register();
 					$REGISTRATION_LAST = time();
+					# [LH] 2012-12-11: Copied WORKER_MAX_TTL/double_clutch() call from HOLD code below 
+					# to enable WORKER_MAX_TTL in Normal Mode as well as Hold Mode.  [RT81709]
 					if ( defined($params->{WORKER_MAX_TTL}) && $params->{WORKER_MAX_TTL} > 0 
 					       && scalar(keys %workers) ) {
 					    double_clutch();
