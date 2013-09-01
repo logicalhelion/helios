@@ -22,6 +22,50 @@ use Helios::Config;
 
 our $VERSION = '2.60_2013081904';
 
+# FILE CHANGE HISTORY
+# [2012-01-08]: Added a check to try to prevent loading code outside of @INC.
+# [2012-01-09]: Modified check to prevent loading code outside of @INC.
+# [2012-03-25]: Added code to prevent a worker process from changing into a  
+# daemon due to odd (and uncommon) database connection instability.
+# [2012-03-27]: Changed $DEFAULTS{ZERO_SLEEP_INTERVAL} to 10.  Added code to 
+# add "registration_interval" as a configuration parameter.  Added 
+# $DEFAULTS{REGISTRATION_INTERVAL} and set to 60.  Changed 
+# $REGISTRATION_INTERVAL to 60.
+# [2012-04-01]: Changed service module loaded notification to report version 
+# only if the module has a $VERSION set.  Changed service initialization to use
+# the prep() method instead of getConfigFromIni() and getConfigFromDb() to 
+# ensure proper initialization of loggers and Data::ObjectDriver database 
+# connection.
+# [2012-05-20]: Removed old commented out calls to getConfigFrom*(), 
+# clean_shutdown(), and logMsg() (logging a HALT message).  Removed 2 empty
+# comments.
+# [LH] [2012-07-11]: Switched from using TheSchwartz to using 
+# Helios::TheSchwartz.  Added WORKER_BLITZ_FACTOR feature to launch workers 
+# faster when there are less than MAX_WORKERS jobs available.  Stopped closing
+# STDOUT, STDIN, and STDERR when helios.pl daemonizes because it was causing
+# problems with some services.
+# [LH] [2012-07-15]: Added to use Helios::Config, and changed configuration 
+# update code to use Helios::Config instead of getConfigFromDb().  Added 
+# debugging messages for ZERO_SLEEP_INTERVAL and REGISTRATION_INTERVAL.
+# [LH] [2012-07-26]: Changed "worker_blitz_factor" config param to 
+# "WORKER_BLITZ_FACTOR".  Added new code to better handle database connections
+# after a fork() so worker processes do not share or disconnect the daemon's 
+# connections.
+# [LH] [2012-07-29]: Added DOUBLE_CLUTCH_INTERVAL config parameter to control 
+# WORKER_MAX_TTL functionality better than ZERO_LAUNCH_INTERVAL.  Updated 
+# copyright info.  
+# [LH] [2012-09-05]: Changed DOUBLE_CLUTCH_INTERVAL to 
+# WORKER_MAX_TTL_WAIT_INTERVAL.
+# [LH] [2012-09-28]: Removed old commented out code.
+# [LH] [2012-10-12]: Replaced code attempting to prevent loading of modules
+# outside of @INC with new require_module() function.
+# [LH] [2012-12-11]: Added code to apply WORKER_MAX_TTL after registration in 
+# daemon main loop.  [RT81709]
+# [LH] [2013-08-04]: Implemented new PID file locking scheme to fix [RT81914]. 
+# Replaced write_pid_file() and mostly rewrote running_process_check() to 
+# prevent a PID file race condition.  
+# [LH] [2013-08-19]: Added comments for clarification of fix for [RT81914].
+
 =head1 NAME
 
 helios.pl - Launch a daemon to service jobs in the Helios job processing system
@@ -1167,6 +1211,7 @@ sub clear_halt {
 }
 
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+# [LH] 2012-10-12: Added this method to more securely load module code at runtime.
 
 sub require_module {
 	my $service_class = shift;

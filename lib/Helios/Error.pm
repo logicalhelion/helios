@@ -13,6 +13,10 @@ use Helios::Error::ConfigError;
 
 our $VERSION = '2.60';
 
+# FILE CHANGE HISTORY
+# 2011-12-18: Added new Helios::Error::BaseError and LoggingError classes.
+# 2012-07-28: Added new Helios::Error::ConfigError class.
+
 1;
 
 __END__;

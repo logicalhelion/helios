@@ -177,4 +177,21 @@ via HTTP.  If your cgi-bin directory is, say, /usr/local/apache/cgi-bin:
     
 should put submitJob.pl in the right place and set the proper ownership and 
 permissions.
+
     
+# CHANGE HISTORY
+# 2012-01-04: Split out Ubuntu instructions into separate INSTALL.ubuntu file.
+# Updated both new files for the most recent releases of the OSes.  Clarified
+# generic instructions in places.
+# 2012-01-08: Split out Red Hat instructions into separate INSTALL.redhat file.
+# Further updates to generic INSTALL instructions to streamline installation
+# procedures.
+# 2012-01-22: Added instructions for using Bundle::Helios::Generic to install 
+# prerequisites.  Added extra instructions for installing submitJob.pl with
+# correct ownership and permissions.
+# [LH] [2012-11-06]: Explicitly mention expat2 library as a requirement, as it 
+# is required for XML parsing but is not always installed with the base OS.
+# Changed mentions of helios_schema.sql to helios_schema_mysql.  Added 
+# instructions for Oracle database.  Added Test::Simple to the list of required 
+# modules.  Changed mentions of Bundle::Helios::Generic to Bundle::Helios.  
+# Minor other changes for clarity and grammar.

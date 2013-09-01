@@ -14,10 +14,23 @@ require XML::Simple;
 use Helios::Error;
 use Helios::JobHistory;
 
-our $VERSION = '2.60';
+our $VERSION = '2.60_3450';
 
 our $D_OD_RETRIES = 3;
 our $D_OD_RETRY_INTERVAL = 5;
+
+# 2011-12-15:  Removed setting $XML::Simple::PREFERRED_PARSER.
+# 2012-01-01:  Changed failed() and failedNoRetry() methods to truncate error 
+# string at 256 chars.  That's the max length of the matching field in the 
+# ERROR table.  Updated copyright info.
+# 2012-03-27:  Documented accessor methods and greatly expanded and updated 
+# JOB SUBMISSION documentation.
+# 2012-04-01:  Added setDriver() and initDriver() methods.  Refactored old 
+# getDriver() into initDriver(), and changed getDriver() to call initDriver().
+# 2012-04-25:  Added deferred() method.
+# [LH] 2012-07-11: submit(): changed to use Helios::TheSchwartz instead of 
+# base TheSchwartz to implement database connection caching.
+
 
 =head1 NAME
 

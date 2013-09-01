@@ -23,3 +23,6 @@ WriteMakefile(
 );
 
 
+# CHANGE HISTORY
+# 2011-12-15: Updated ABSTRACT wording.  Updated PREREQ_PM list to simplify 
+# installation, especially on RHEL 5.  Removed unnecessary XML::* dependencies.

@@ -8,7 +8,11 @@ use Error qw(:try);
 use Helios::Job;
 use Helios::Service;
 
-our $VERSION = '2.60';
+our $VERSION = '2.60_3410';
+
+# CHANGES:
+# 2012-01-22: Minor changes to comments.
+# [LH] 2013-08-04: Changed service instantiation to use new Helios::Config API.
 
 =head1 NAME
 
@@ -56,8 +60,10 @@ if ( !defined($JOB_CLASS) || ($JOB_CLASS eq '--help') || ($JOB_CLASS eq '-h') ) 
 # instantiate the base worker class just to get the [global] INI params
 # (we need to know where the Helios db is)
 my $WORKER = new Helios::Service;
+# BEGIN [LH] 2012-08-04: Changed old service init to use new Helios::Config API
 $WORKER->prep();
 my $config = $WORKER->getConfig();
+# END [LH] 2013-08-04
 
 # if we were passed a <params> wodge of XML on the command line, 
 # try to validate it

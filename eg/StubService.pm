@@ -9,6 +9,11 @@ use Helios::Error;			# pulls in all Helios::Error::* exception types
 
 our $VERSION = '0.03';		# for packaging purposes
 
+
+# FILE CHANGE HISTORY:
+# 2012-01-08:  Updated code for clarity.
+# 2012-01-09:  Refactored from Stub::StubService to just StubService.
+
 =head1 NAME
 
 Stub::StubService - Helios::Service subclass to handle [job type here] jobs

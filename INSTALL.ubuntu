@@ -125,3 +125,10 @@ will only need to install it on one host.  Panoptes is packaged separately and
 has its own installation instructions; refer its README for instructions.
 
 
+# FILE CHANGE HISTORY:
+# [2012-01-04]: Moved Debian/Ubuntu-specific install instructions from 
+# INSTALL to INSTALL.ubuntu.
+# [2012-01-08]: Updated and clarified instructions based on successful tests
+# on Ubuntu 11.04.
+# [LH] [2012-11-06]: More clarification and updates based on successful tests 
+# with Ubuntu 10.04 LTS, 11.04, and 12.04 LTS.
