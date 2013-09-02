@@ -44,7 +44,7 @@ Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
 
 =head1 COPYRIGHTS AND LICENSE
 
-Copyright (C) 2012 by Logical Helion, LLC.
+Copyright (C) 2012-3 by Logical Helion, LLC.
 
 Copyright (C) 2007-9 CEB Toolbox, Inc.
 

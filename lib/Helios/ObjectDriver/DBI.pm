@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use base qw(Data::ObjectDriver::Driver::DBI);
 
-our $VERSION = '2.60_3410';
+our $VERSION = '2.601_3610';
 
 # [LH] 2012-07-11: Changed the DBI connection creation to use connect_cached()
 # instead of connect() to implement connection caching.  Also added 

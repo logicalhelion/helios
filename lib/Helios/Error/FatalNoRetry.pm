@@ -2,7 +2,7 @@ package Helios::Error::FatalNoRetry;
 
 use base qw(Helios::Error::BaseError);
 
-our $VERSION = '2.60_3450';
+our $VERSION = '2.601_3610';
 
 # 2011-12-18:  Changed base class from Error::Simple to Helios::Error::BaseError.
 

@@ -14,7 +14,7 @@ require XML::Simple;
 use Helios::Error;
 use Helios::JobHistory;
 
-our $VERSION = '2.60_3450';
+our $VERSION = '2.601_3610';
 
 our $D_OD_RETRIES = 3;
 our $D_OD_RETRY_INTERVAL = 5;
