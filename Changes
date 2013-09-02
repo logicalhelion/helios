@@ -1,9 +1,10 @@
 Revision history for Perl extension Helios.
-2.601_
+2.601_3610  Mon Sep 02 00:01:37 2013
 	- Patch for [RT79690] Job initialization error handling.
 	- Fix for [RT81709] WORKER_MAX_TTL not always enforced.
 	- Fix for [RT81914] Race condition on PID file.
-	- Internal documentation updates.
+	- Internal documentation updates, including addition of project 
+	  metadata to Makefile.PL.
 2.60  Mon Nov 06 00:00:00 2012
 	-Significant changes to Helios database connection handling, 
 	 including a specialized Data::ObjectDriver class and TheSchwartz 
