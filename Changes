@@ -1,4 +1,7 @@
 Revision history for Perl extension Helios.
+2.601_3670  Sun Sep  8 13:40:41 2013
+	- Helios::Job: added specific check for [RT79690] to new() so
+	  when it happens we can generate a better error message. 
 2.601_3610  Mon Sep 02 00:01:37 2013
 	- Patch for [RT79690] Job initialization error handling.
 	- Fix for [RT81709] WORKER_MAX_TTL not always enforced.

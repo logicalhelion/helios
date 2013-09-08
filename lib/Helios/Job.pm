@@ -14,7 +14,7 @@ require XML::Simple;
 use Helios::Error;
 use Helios::JobHistory;
 
-our $VERSION = '2.601_3610';
+our $VERSION = '2.601_3670';
 
 our $D_OD_RETRIES = 3;
 our $D_OD_RETRY_INTERVAL = 5;
@@ -30,6 +30,9 @@ our $D_OD_RETRY_INTERVAL = 5;
 # 2012-04-25:  Added deferred() method.
 # [LH] 2012-07-11: submit(): changed to use Helios::TheSchwartz instead of 
 # base TheSchwartz to implement database connection caching.
+# [LH] [2013-09-07] new(): changed to check to see if TheSchwartz::Job object 
+# to new() has an array in arg(), and throw an exception if it doesn't.
+# (It always should, but [RT79690] is preventing that in a tiny number of cases.) 
 
 
 =head1 NAME
@@ -139,7 +142,17 @@ sub new {
 	# init fields
 	if ( defined($_[0]) && ref($_[0]) && $_[0]->isa('TheSchwartz::Job') ) {
 		$self->job($_[0]);
-		$self->setArgXML( $_[0]->arg()->[0] );
+# BEGIN CODE COPYRIGHT (C) 2013 LOGICAL HELION, LLC.
+# [LH] [2013-09-07] new(): changed to check to see if TheSchwartz::Job object 
+# to new() has an array in arg(), and throw an exception if it doesn't.
+# (It always should, but [RT79690] is preventing that in a tiny number of cases.) 
+		if ( ref($_[0]->arg()) eq 'ARRAY' ) {
+			my $arg_str = $_[0]->arg()->[0];
+			$self->setArgXML($arg_str);		
+		} else {
+			Helios::Error::DatabaseError->throw("Received job without actual job arguments, probably due to transient database problem [RT79690].");				
+		}
+# END CODE COPYRIGHT (C) 2013 LOGICAL HELION, LLC.
 	} else {
 		my $schwartz_job = TheSchwartz::Job->new(@_);
 		$self->job($schwartz_job);
