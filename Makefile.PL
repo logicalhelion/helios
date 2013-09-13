@@ -7,6 +7,7 @@ WriteMakefile(
     NAME              => 'Helios',
     AUTHOR            => 'Andrew Johnson <lajandy at cpan dotorg>',
     ABSTRACT          => 'A system for distributed job processing applications.',
+    (ExtUtils::MakeMaker->VERSION >= 6.3002 ? (LICENSE => 'perl') : () ),
     LICENSE           => 'perl',
     VERSION_FROM      => 'lib/Helios.pm', # finds $VERSION
     PREREQ_PM         => {   Test::Simple           => 0.72,
@@ -20,17 +21,19 @@ WriteMakefile(
 							},
     EXE_FILES         => [ 'helios.pl', 'helios_job_submit.pl', 'helios_log_clean.pl'],
     INST_SCRIPT       => 'bin',
-    META_MERGE        => {
+    (ExtUtils::MakeMaker->VERSION >= 6.46 ? 
+    	(META_MERGE   => {
+    						'meta-spec' => { version => 1.4 },
                             resources => {
                                 homepage   => 'http://helios.logicalhelion.org',
                                 bugtracker => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Helios',
-                                repository => {
-                                    type => 'git',
-                                    url  => 'https://github.com/logicalhelion/helios.git',
-                                    web  => 'https://github.com/logicalhelion/helios',
-    							},
+                                repository => 'git://github.com/logicalhelion/helios.git',
                             },
-                         },
+                         },    	
+    	) 
+    	: ()
+    ),
+
 );
 
 
@@ -39,3 +42,7 @@ WriteMakefile(
 # installation, especially on RHEL 5.  Removed unnecessary XML::* dependencies.
 # [LH] [2013-09-01]: Added META_MERGE section to specify GitHub repo and 
 # website URL info.
+# [LH] [2013-09-13]: Changed META_MERGE and LICENSE sections to be added only 
+# if the loaded ExtUtils::MakeMaker version supports them.  Corrected 
+# {repository} section of META_MERGE=>{resources} and added explicit meta-spec 
+# version.

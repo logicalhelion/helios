@@ -1,4 +1,6 @@
 Revision history for Perl extension Helios.
+2.601_3750  Fri Sep 13 14:11:51 2013
+	- Makefile.PL to correct MakeMaker version handling and meta info.
 2.601_3670  Sun Sep  8 13:40:41 2013
 	- Helios::Job: added specific check for [RT79690] to new() so
 	  when it happens we can generate a better error message. 
