@@ -6,7 +6,7 @@ use warnings;
 use base qw(TheSchwartz);
 use Carp qw( croak );
 
-our $VERSION = '2.60';
+our $VERSION = '2.61';
 
 sub driver_for {
     my Helios::TheSchwartz $client = shift;
@@ -22,6 +22,8 @@ sub driver_for {
         if ($db->{driver}) {
             $driver = $db->{driver};
         } else {
+			# [LH] 2012-07-11: Changed driver creation to use Helios driver to 
+			# cache database connections.
             $driver = Helios::ObjectDriver::DBI->new(
                         dsn      => $db->{dsn},
                         username => $db->{user},

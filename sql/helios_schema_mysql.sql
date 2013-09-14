@@ -1,3 +1,8 @@
+# FILE CHANGE HISTORY:
+# [2012-01-08]: Added CREATE DATABASE, CREATE USER, GRANT, AND USE lines.
+# [2012-05-09]: Renamed helios_schema.sql to helios_schema_mysql.sql because 
+# of newly added Oracle schema support.
+
 CREATE DATABASE helios_db;
 
 # Uncomment the lines below and edit them to match security policies for your
