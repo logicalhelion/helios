@@ -8,7 +8,7 @@ use Error qw(:try);
 use Helios::Job;
 use Helios::Service;
 
-our $VERSION = '2.601_3610';
+our $VERSION = '2.61';
 
 # CHANGES:
 # 2012-01-22: Minor changes to comments.

@@ -1,15 +1,19 @@
 Revision history for Perl extension Helios.
-2.601_3750  Fri Sep 13 14:11:51 2013
-	- Makefile.PL to correct MakeMaker version handling and meta info.
-2.601_3670  Sun Sep  8 13:40:41 2013
-	- Helios::Job: added specific check for [RT79690] to new() so
-	  when it happens we can generate a better error message. 
-2.601_3610  Mon Sep 02 00:01:37 2013
-	- Patch for [RT79690] Job initialization error handling.
-	- Fix for [RT81709] WORKER_MAX_TTL not always enforced.
-	- Fix for [RT81914] Race condition on PID file.
-	- Internal documentation updates, including addition of project 
-	  metadata to Makefile.PL.
+2.61  Fri Sep 13 20:02:14 2013
+	- Helios 2.61 is a bugfix release:
+	- helios.pl: Fix for [RT81709].
+	- helios.pl: Fix for [RT81914].
+	- Helios::Service & Helios::Job: Patch for [RT79690].  This bug 
+	  actually appears to be caused by LOB binding problems with the
+	  underlying DBD module.  This problem can cause a loss of jobs 
+	  in the job queue under certain circumstances, so if you are 
+	  experiencing this problem you are encouraged to upgrade to this 
+	  version and upgrade your DBD module to the latest version.  
+	  Consult the rt.cpan.org page for this bug for more information.
+	- Makefile.PL: Changes for proper version handling of LICENSE. 
+	  Additions so the generated META.* files will have website, 
+	  bugtracking, and GitHub information for sites like MetaCPAN and
+	  search.cpan.org. 
 2.60  Mon Nov 06 00:00:00 2012
 	-Significant changes to Helios database connection handling, 
 	 including a specialized Data::ObjectDriver class and TheSchwartz 

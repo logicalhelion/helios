@@ -8,7 +8,7 @@ use warnings;
 use Helios::LogEntry::Levels qw(:all);
 use Helios::Error::LoggingError;
 
-our $VERSION = '2.601_3610';
+our $VERSION = '2.61';
 
 # 2011-12-07:  The code of Helios::Service->logMsg() was moved here to 
 # implement internal logging as a Helios::Logger subclass.
