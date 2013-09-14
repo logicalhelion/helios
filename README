@@ -33,13 +33,17 @@ XML::Simple
 
 COPYRIGHT AND LICENSE
 
-Copyright (C)2007-8 CEB Toolbox, Inc.
+This version of the software is based on Helios 2.23, which is 
+Copyright (C) 2007-8 by CEB Toolbox, Inc., and is available from 
+CPAN at:  http://search.cpan.org/~lajandy/Helios-2.23/
+
+Portions of this software are Copyright (C) 2012-3 by Logical Helion, LLC
+where noted.
 
 Portions of this software are Copyright (C) 2009-12 by Andrew Johnson
 where noted.
 
-Portions of this software are Copyright (C) 2012 by Logical Helion, LLC
-where noted.
+Portions of this software are Copyright (C)2007-8 CEB Toolbox, Inc.
 
 Portions of this software are Copyright (C) 2005-6 by Six Apart, 
 cpan@sixapart.com, where noted.

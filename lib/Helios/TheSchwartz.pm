@@ -8,7 +8,7 @@ use Carp qw( croak );
 
 use constant OK_ERRORS => { map { $_ => 1 } Data::ObjectDriver::Errors->UNIQUE_CONSTRAINT, };
 
-our $VERSION = '2.60';
+our $VERSION = '2.61_201309130';
 
 our $T_AFTER_GRAB_SELECT_BEFORE_UPDATE;
 our $FIND_JOB_BATCH_SIZE = 50;
@@ -27,6 +27,8 @@ sub driver_for {
         if ($db->{driver}) {
             $driver = $db->{driver};
         } else {
+			# [LH] 2012-07-11: Changed driver creation to use Helios driver to 
+			# cache database connections.
             $driver = Helios::ObjectDriver::DBI->new(
                         dsn      => $db->{dsn},
                         username => $db->{user},

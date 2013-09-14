@@ -8,7 +8,10 @@ use Getopt::Long;
 use Helios::Service;
 use Helios::Error;
 
-our $VERSION = '2.60';
+our $VERSION = '2.61';
+
+# CHANGES:
+# [LH] 2013-08-04: Changed service instantiation to use new Helios::Config API.
 
 =head1 NAME
 
@@ -72,8 +75,10 @@ unless ($DAYS) { $DAYS = 7; }
 # instantiate the base worker class just to get the [global] INI params
 # (we need to know where the Helios db is)
 our $WORKER = new Helios::Service;
+# BEGIN [LH] 2012-08-04: Changed old service init to use new Helios::Config API
 $WORKER->prep();
 my $params = $WORKER->getConfig();
+# END [LH] 2012-08-04
 my $sql;
 my $epoch_horizon = time() - ($DAYS * $SECONDS_IN_DAY);
 

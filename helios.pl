@@ -8,9 +8,11 @@ use File::Basename ();
 use File::Spec;
 use Getopt::Long;
 use POSIX;
+use Sys::Hostname;
+# [LH] 2013-08-04:  Added Fcntl for better pidfile locking.  [RT81914]
+use Fcntl qw(:DEFAULT :flock);
 
 use Error qw(:try);
-use Sys::Hostname;
 
 use Helios;
 use Helios::Error;
@@ -18,7 +20,51 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
 use Helios::Config;
 
-our $VERSION = '2.60';
+our $VERSION = '2.61';
+
+# FILE CHANGE HISTORY
+# [2012-01-08]: Added a check to try to prevent loading code outside of @INC.
+# [2012-01-09]: Modified check to prevent loading code outside of @INC.
+# [2012-03-25]: Added code to prevent a worker process from changing into a  
+# daemon due to odd (and uncommon) database connection instability.
+# [2012-03-27]: Changed $DEFAULTS{ZERO_SLEEP_INTERVAL} to 10.  Added code to 
+# add "registration_interval" as a configuration parameter.  Added 
+# $DEFAULTS{REGISTRATION_INTERVAL} and set to 60.  Changed 
+# $REGISTRATION_INTERVAL to 60.
+# [2012-04-01]: Changed service module loaded notification to report version 
+# only if the module has a $VERSION set.  Changed service initialization to use
+# the prep() method instead of getConfigFromIni() and getConfigFromDb() to 
+# ensure proper initialization of loggers and Data::ObjectDriver database 
+# connection.
+# [2012-05-20]: Removed old commented out calls to getConfigFrom*(), 
+# clean_shutdown(), and logMsg() (logging a HALT message).  Removed 2 empty
+# comments.
+# [LH] [2012-07-11]: Switched from using TheSchwartz to using 
+# Helios::TheSchwartz.  Added WORKER_BLITZ_FACTOR feature to launch workers 
+# faster when there are less than MAX_WORKERS jobs available.  Stopped closing
+# STDOUT, STDIN, and STDERR when helios.pl daemonizes because it was causing
+# problems with some services.
+# [LH] [2012-07-15]: Added to use Helios::Config, and changed configuration 
+# update code to use Helios::Config instead of getConfigFromDb().  Added 
+# debugging messages for ZERO_SLEEP_INTERVAL and REGISTRATION_INTERVAL.
+# [LH] [2012-07-26]: Changed "worker_blitz_factor" config param to 
+# "WORKER_BLITZ_FACTOR".  Added new code to better handle database connections
+# after a fork() so worker processes do not share or disconnect the daemon's 
+# connections.
+# [LH] [2012-07-29]: Added DOUBLE_CLUTCH_INTERVAL config parameter to control 
+# WORKER_MAX_TTL functionality better than ZERO_LAUNCH_INTERVAL.  Updated 
+# copyright info.  
+# [LH] [2012-09-05]: Changed DOUBLE_CLUTCH_INTERVAL to 
+# WORKER_MAX_TTL_WAIT_INTERVAL.
+# [LH] [2012-09-28]: Removed old commented out code.
+# [LH] [2012-10-12]: Replaced code attempting to prevent loading of modules
+# outside of @INC with new require_module() function.
+# [LH] [2012-12-11]: Added code to apply WORKER_MAX_TTL after registration in 
+# daemon main loop.  [RT81709]
+# [LH] [2013-08-04]: Implemented new PID file locking scheme to fix [RT81914]. 
+# Replaced write_pid_file() and mostly rewrote running_process_check() to 
+# prevent a PID file race condition.  
+# [LH] [2013-08-19]: Added comments for clarification of fix for [RT81914].
 
 =head1 NAME
 
@@ -246,6 +292,8 @@ our $REGISTRATION_INTERVAL = 60;		# used to periodically register daemon in data
 our $REGISTRATION_LAST = 0;
 
 our $PID_FILE;							# globally accessible PID file location
+# [LH] 2013-08-04:  Added $PID_FILE_H as a filehandle for better pidfile locking.  [RT81914]
+our $PID_FILE_H; 						# globally accessible PID file handle
 our $SAFE_MODE_DELAY = 45;				# SAFE MODE support; number of secs to wait
 our $SAFE_MODE_RETRIES = 5;				# SAFE MODE support; number of times to retry 
 
@@ -478,6 +526,12 @@ MAIN_LOOP:{
 				if ( ($REGISTRATION_LAST + $REGISTRATION_INTERVAL) < time() ) {
 					register();
 					$REGISTRATION_LAST = time();
+					# [LH] 2012-12-11: Copied WORKER_MAX_TTL/double_clutch() call from HOLD code below 
+					# to enable WORKER_MAX_TTL in Normal Mode as well as Hold Mode.  [RT81709]
+					if ( defined($params->{WORKER_MAX_TTL}) && $params->{WORKER_MAX_TTL} > 0 
+					       && scalar(keys %workers) ) {
+					    double_clutch();
+					}
 				}
 		
 				# HOLDING JOB PROCESSING
@@ -736,18 +790,22 @@ The double_clutch() function implements the WORKER_MAX_TTL functionality.  If
 the WORKER_MAX_TTL parameter is set for a service, the service daemon 
 periodically calls double_clutch() to check the workers and clean up any that 
 have run too long.  The double_clutch() function waits a certain amount of time 
-(zero_launch_interval x2 secs), then checks the amount of time each of the 
+(WORKER_MAX_TTL_WAIT_INTERVAL secs), then checks the amount of time each of the 
 running workers has been active.  If a worker has been running longer than the 
 service's WORKER_MAX_TTL, the worker is killed (by sending it a SIGKILL signal).
 
 =cut
 
 sub double_clutch {
-    # sleep $WORKER_MAX_TTL_WAIT_INTERVAL secs before we double check on workers
-	sleep $WORKER_MAX_TTL_WAIT_INTERVAL;
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+	# check each running worker to see if it has been running too long
+	# (too long:  WORKER_MAX_TTL seconds + WORKER_MAX_TTL_WAIT_INTERVAL "fudge factor")
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
     foreach my $pid (keys %workers) {
-        my $time_of_death = $workers{$pid} + $params->{WORKER_MAX_TTL};
-        if ( time() > $time_of_death ) {
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+        my $time_to_die = $workers{$pid} + $params->{WORKER_MAX_TTL} + $WORKER_MAX_TTL_WAIT_INTERVAL;
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
+        if ( time() > $time_to_die ) {
             kill 9, $pid;
             delete $workers{$pid};
             $worker->logMsg(LOG_ERR, "Killed process $pid (exceeded WORKER_MAX_TTL)");
@@ -917,6 +975,9 @@ sub terminator {
 }
 
 
+# [LH] 2013-08-04:  Added 2nd paragraph to write_pid_file() documentation to 
+# help explain how new running_process_check()/write_pid_file() works.
+
 =head1 PID FILE FUNCTIONS
 
 =head2 write_pid_file($pid_path)
@@ -927,25 +988,33 @@ replaced by underscores.  For example, the PID file for a service class named
 'SearchIndex::LoadTestWorker' will be named "searchindex__loadtestworker.pid".  To change the 
 location where the PID file is created, set the pid_path option in helios.ini.
 
+The running_process_check() function should be run before this function to 
+exclusively lock the PID file.
+
 =cut
 
 sub write_pid_file {
-	my $pid_path = shift;
-	my $fh;
-	# Determine where to put the PID file
-	unless (defined($pid_path) ) {
-		$pid_path = $DEFAULTS{PID_PATH};
-	}
+# BEGIN CODE Copyright (C) 2013 Logical Helion, LLC.	
+	# [LH] 2013-08-04:  Rewrote write_pid_file() to take advantage of the 
+	# exclusive lock on the pidfile created by running_process_check().
+	# [RT81914]
 
-	# Determine PID filename
-	my $filename = lc($worker_class);
-	$filename =~ s/\:/\_/g;
-	$PID_FILE = File::Spec->catfile($pid_path, $filename.'.pid');
-	if ($DEBUG_MODE) { print "Writing pid file $PID_FILE\n";	}
-	
-	open $fh, ">", $PID_FILE or do { $worker->errstr("Cannot write PID file $PID_FILE: ".$!); return undef; };
-	print $fh $$;
-	close $fh;
+	# Rewind the PID file handle opened by running_process_check(),
+	# write our own PID in the file, and 
+	# signal to the calling routine it's OK to finish start up.
+	seek($PID_FILE_H, 0, 0) or do {
+		$worker->errstr("Cannot rewind $PID_FILE: ".$!);
+		close($PID_FILE_H);
+		return 0;
+	};
+	print $PID_FILE_H $$,"\n";
+	truncate($PID_FILE_H, tell($PID_FILE_H)) or do {
+		$worker->errstr("Cannot truncate $PID_FILE after writing PID: ".$!);
+		close($PID_FILE_H);
+		return 0;
+	};
+	close($PID_FILE_H);
+# END CODE Copyright (C) 2013 Logical Helion, LLC
 
 	return 1;
 }
@@ -968,12 +1037,19 @@ sub remove_pid_file {
 }
 
 
+# [LH] 2013-08-04: Added 2nd paragraph below to explain how new running_process_check() works.
+
 =head2 running_process_check($pid_path)
 
 Given the pid_path, check to see if a $pid_file for the loaded service class exists and, if it does,
 check to see if that process is still running.  If the file doesn't exist or it does but isn't 
 running, this function returns 0.  If the process is still running, record the error and return the 
 running process's pid to signal that service startup should halt. 
+
+If the PID file does not exist, running_process_check() creates it.  The PID 
+file is then exclusively locked to prevent other daemons for the same service 
+from writing to it.  This helps ensure multiple Helios daemons for same 
+service will not start up at the same time.
 
 =cut
 
@@ -991,15 +1067,37 @@ sub running_process_check {
 	# check if this file exists
 	# if it does, check if that process is still running
 	# bail if it is
-	if (-r $PID_FILE) {
-		my $pid = `cat $PID_FILE`;
-		my $pinfo = `ps -p $pid|wc -l`;
-		# is this process still running?
-		if ($pinfo > 1) {
-			$worker->errstr($worker->getJobType()." service daemon already running (process ".$pid.").");
-			return $pid;
-		} 
+# BEGIN CODE Copyright (C) 2013 Logical Helion, LLC.
+	# [LH] 2013-08-04:  Rewrote this piece of running_process_check() to put 
+	# an exclusive lock on the pidfile (also creating it if it doesn't exist).
+	# Also switched to using the relatively portable Perl kill() instead of 
+	# grep-ing shell output to determine whether the process in the pidfile
+	# is still running.  [RT81914]
+	sysopen($PID_FILE_H, $PID_FILE, O_RDWR | O_CREAT) or do {
+		$worker->errstr("Cannot open $PID_FILE: ".$!);
+		return 1;		
+	};
+	flock($PID_FILE_H, LOCK_EX | LOCK_NB) or do {
+		$worker->errstr("Cannot lock $PID_FILE (another daemon already starting for this service?): ".$!);
+		close($PID_FILE_H);
+		return 1;
+	};
+	
+	my $pid_in_file = <$PID_FILE_H>;
+	chomp $pid_in_file if defined($pid_in_file);
+	# if there's an actual, valid pid in the file, 
+	# check to see if that process is still running
+	if ( defined($pid_in_file) && $pid_in_file !~ /\D/ && $pid_in_file > 1) {
+		my $proc_count = kill 0, $pid_in_file;
+		if ($proc_count > 0) {
+			$worker->errstr($worker->getJobType()." service daemon already running (process ".$pid_in_file.").");
+			close($PID_FILE_H);
+			return $pid_in_file;
+		}
 	}
+	
+# END CODE Copyright (C) 2013 Logical Helion, LLC.
+	
 	return 0;
 }
 
@@ -1117,6 +1215,7 @@ sub clear_halt {
 }
 
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+# [LH] 2012-10-12: Added this method to more securely load module code at runtime.
 
 sub require_module {
 	my $service_class = shift;
@@ -1161,7 +1260,7 @@ Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
 Copyright (C) 2007-9 by CEB Toolbox, Inc.
 
 Portions of this software, where noted, are
-Copyright (C) 2012 by Logical Helion, LLC.
+Copyright (C) 2012-2013 by Logical Helion, LLC.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

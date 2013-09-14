@@ -1,6 +1,11 @@
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl Helios.t'
 
+# 2012-08-04:  Changed config tests to use (and test) new Helios::Config 
+# instead of Helios::Service->getConfigFromIni().  Also changed Helios::Service
+# tests to instantiate a service object using direct instead of indirect 
+# object notation.  Also added test of Helios::Service->prep() method.
+
 #########################
 
 use Test::More;

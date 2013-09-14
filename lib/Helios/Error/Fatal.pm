@@ -2,7 +2,10 @@ package Helios::Error::Fatal;
 
 use base qw(Helios::Error::BaseError);
 
-our $VERSION = '2.40';
+our $VERSION = '2.61';
+
+# 2011-12-18:  Changed base class from Error::Simple to Helios::Error::BaseError.
+
 
 1;
 __END__;

@@ -17,7 +17,92 @@ use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
 
-our $VERSION = '2.60';
+our $VERSION = '2.61';
+
+# FILE CHANGE HISTORY:
+# [2011-12-07]: Updated to support new Helios::Logger API.  Added 
+# %INIT_LOG_CLASSES global.  Completely rewrote logMsg() method.  Updated 
+# logMsg() documentation.
+# [2011-12-07]: Updated copyright info.
+# [2011-12-07]: Removed parseArgXML() method (redundant).
+# [2011-12-28]: Removed unnecessary 'use XML::Parser' line.
+# [2011-12-28]: Replaced metajob running code in work() with new runMetajob()
+# method.
+# [2011-12-28]: work(): changed so CACHED_CONFIG and 
+# CACHED_CONFIG_RETRIEVAL_COUNT only print to STDOUT if debug() is set.
+# [2011-12-28]: Updated copyright info.
+# [2012-01-01]: Renamed runMetajob() method to metarun().
+# [2012-01-01]: work(): replaced old code calling the service class's run() 
+# method.  New code: 1) calls run() or metarun() as appropriate, 2) ignores 
+# value returned by run() and metarun() unless DOWNSHIFT_ON_NONZERO_RUN 
+# parameter is set, 3) is wrapped in an eval {} to catch uncaught exceptions
+# a service class's run() might throw, forcing the job to failure.  Updated
+# work() documenation for new functionality.
+# [2012-01-01]: Updated copyright info for new year.
+# [2012-01-04]: Fixed max_retries() and retry_delay() so they actually pay 
+# attention to MaxRetries() and RetryInterval().  In the original code they 
+# didn't, and MaxRetries() and RetryInterval() did not work as documented.
+# [2012-01-08]: work(): explicitly return 0 to the calling routine. 
+# [2012-03-27]: Reorganized use module lines.  Removed unnecessary TheSchwartz &
+# TheSchwartz::Job lines.
+# [2012-03-27]: work(): added debugging code for new driver and logger code.
+# [2012-03-27]: work(): changed try {} to eval {}.
+# [2012-03-27]: prep(): Replaced old prep() method with new version that 
+# starts new logger and config initialization.
+# [2012-03-27]: jobsWaiting(): changed quote operator for query from heredoc 
+# to qq{}
+# [2012-03-27]: added new setDriver() and initDriver() methods.  Replaced 
+# getDriver() method with new one that uses setDriver() and initDriver().
+# [2012-03-27]: added initLoggers() method to handle logger module 
+# initialization.
+# [2012-04-25]: added deferredJob() method.
+# [2012-05-20]: work: removed driver and logger debugging code.  Removed 
+# comment about removing a debug message before release (it is useful to leave 
+# that debugging message in).
+# [2012-05-20]: dbConnect(): removed old commented-out code.
+# [LH] [2012-07-11]: Switched use line for Data::ObjectDriver::Driver::DBI to 
+# load Helios::ObjectDriver::DBI to start integration of database connection 
+# caching.
+# [LH] [2012-07-15]: Changed prep() to use new Helios::Config class.  Removed 
+# 'use Config::IniFiles' because with Helios::Config it's redundant.
+# [LH] [2012-07-15]: replaced most of dbConnect() code to implement fork-safe 
+# database connection creation and sharing.
+# [LH] [2012-07-15]: replaced most of jobWaiting() code for simplicity and to 
+# replace try{} with eval {}.
+# [LH] [2012-07-15]: replaced most of getFuncidFromDb() code to change try{} 
+# to eval{} and eliminate indirect object notation.
+# [LH] [2012-07-16]: getFuncidFromDb(): fixed identation of new code.
+# [LH] [2012-07-16]: updated copyright notices (added Logical Helion, LLC to 
+# main COPYRIGHT section).
+# [LH] [2012-08-04]: removed 'use Error' line as all of the try {} blocks have
+# been replaced with eval {}.
+# [LH] [2012-08-04]: replaced getConfigFromIni() and getConfigFromDb() with 
+# versions that use the new Helios::Config API.  Changed POD for both to note
+# the methods are deprecated.
+# [LH] [2012-08-04]: added new initConfig() method to manage Helios::Config 
+# module initialization.
+# [LH] [2012-08-04]: added blank default ConfigClass() method.
+# [LH] [2012-08-04]: dbConnect(): updated to better handle "options" directives
+# and improve connection code.  Updated dbConnect() POD.
+# [LH] [2012-08-04]: Reformatted copyright notices for clarity.
+# [LH] [2012-08-07]: further changes to getConfigFromIni() and 
+# getConfigFromDb() to work with Helios::Config API.
+# [LH] [2012-09-05]: removed old commented out code from getConfigFromIni(), 
+# getConfigFromDb(), getFuncidFromDb(), dbConnect().
+# [LH] [2012-09-05]: Added to POD entry for getFuncidFromDb().
+# [LH] [2012-11-06]: Added _require_module() method to safely load modules at 
+# runtime.
+# [LH] [2012-11-06]: removed old commented out 'use' lines for 
+# Config::IniFiles, Data::ObjectDriver::Driver::DBI, Error.
+# [LH] [2012-11-06]: corrected grammar in work() documentation.
+# [LH] [2012-11-06]: removed old commented out code from prep().
+# [LH] [2012-11-06]: removed old commented out code from getDriver().
+# [LH] [2012-11-06]: Added ConfigClass() and initConfig() POD.
+# [LH] [2013-08-11]: Added code to work() to catch and handle job 
+# initialization errors.  [RT79690]
+# [LH] [2013-08-19]: Removed old commented out code and clarified comments on 
+# job initialization error handling.
+
 
 =head1 NAME
 
@@ -95,7 +180,29 @@ sub retry_delay { $_[0]->RetryInterval(); }
 sub work {
 	my $class = shift;
 	my $schwartz_job = shift;
-	my $job = $class->JobClass() ? $class->JobClass()->new($schwartz_job) : Helios::Job->new($schwartz_job);
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+	# 2013-08-11: Rewritten job initialization code to catch job init errors, including [RT79690].
+	my $job;
+	my $job_init_error;
+	eval {
+		# turn the schwartz job we were given into: 
+		# a custom job object defined by the app class,
+		# or a basic Helios::Job object if the app didn't specify anything special
+		if ( $class->JobClass() ) {
+			# instantiate a custom job object
+			$job = $class->JobClass()->new($schwartz_job);
+		} else {
+			# nothing fancy, just a normal Helios::Job object
+			$job = Helios::Job->new($schwartz_job);
+		}
+		1;
+	} or do {
+		# uhoh, there was a problem turning the schwartz job into a Helios job
+		# note that, and when the worker is fully prepped, 
+		# we'll take care of the problem
+		$job_init_error = "$@";
+	};
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 	$WORKER_START_TIME = $WORKER_START_TIME ? $WORKER_START_TIME : time();     # for WORKER_MAX_TTL 
 	my $return_code;
 	my $args;
@@ -132,6 +239,20 @@ sub work {
                 $CACHED_CONFIG_RETRIEVAL_COUNT = 1;     # "prime the pump"
             }	    
         }
+
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+		# 2013-08-11: Rewritten job initialization code to catch job init errors, including [RT79690].
+		# if a job initialization error occurred above,
+		# we want to log the error and then exit the worker process
+		# trying to further job setup and/or run the job is ill-advised,
+		# and if we have to exit the process so TheSchwartz doesn't force the job to failure.
+		# (but we have to wait and do it here so we can properly log the error)
+		if ( defined($job_init_error) ) {
+			if ($self->debug) { print "JOB INITIALIZATION ERROR: ".$job_init_error."\n"; }
+			$self->logMsg(LOG_CRIT, "JOB INITIALIZATION ERROR: $job_init_error");
+			exit(1);
+		}
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 	    	    
 		$job->debug( $self->debug );
 		$job->setConfig($self->getConfig());
@@ -219,6 +340,7 @@ sub work {
 	return 0;
 }
 
+# BEGIN CODE Copyright (C) 2011-2012 by Andrew Johnson.
 
 =head2 metarun($job)
 
@@ -239,13 +361,6 @@ job queue, the faster Helios workers can be launched to handle them.  If you
 have thousands (or tens of thousands, or more) of jobs to run, especially if 
 you are running your service in OVERDRIVE mode, you should use metajobs to 
 greatly increase system throughput.
-
-=head3 COPYRIGHT
-
-This method is Copyright (C) 2011-2012 by Andrew Johnson.
-
-See the COPYRIGHT AND LICENSE section elsewhere in this document for specific
-copyright and license terms.
 
 =cut
 
@@ -280,6 +395,7 @@ sub metarun {
 		}
 	};
 }
+# END CODE Copyright (C) 2011-2012 by Andrew Johnson.
 
 
 =head1 ACCESSOR METHODS
@@ -492,6 +608,7 @@ sub getConfigFromIni {
 	my $inifile = shift;
 
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+# getConfigFromIni() is no longer necessary.
 	
 	unless ($INIT_CONFIG_CLASS) {
 		if ( defined($inifile) ) { $self->setIniFile($inifile); }
@@ -529,6 +646,7 @@ sub getConfigFromDb {
 	my $params = $self->getConfig();
 
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+# getConfigFromDb() method is no longer necessary.
 
 	unless ($INIT_CONFIG_CLASS) {
 		$INIT_CONFIG_CLASS = $self->initConfig();
@@ -598,7 +716,6 @@ sub jobsWaiting {
 
 
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
-
 	my $jobsWaiting;
 	my $funcid = $self->getFuncid();
 	eval {
@@ -628,6 +745,8 @@ sub jobsWaiting {
 }
 
 
+# BEGIN CODE Copyright (C) 2012 by Andrew Johnson.
+
 =head2 initDriver()
 
 Creates a Data::ObjectDriver object connected to the Helios database and 
@@ -640,7 +759,6 @@ connections to the Helios database.
 
 =cut
 
-# BEGIN CODE Copyright (C) 2012 by Andrew Johnson.
 sub initDriver {
 	my $self = shift;
 	my $config = $self->getConfig();
@@ -886,7 +1004,6 @@ as a Helios::Error::LoggingError exception.
 =cut
 
 # BEGIN CODE Copyright (C) 2009-12 by Andrew Johnson.
-
 sub logMsg {
 	my $self = shift;
 	my @args = @_;
@@ -1012,6 +1129,7 @@ error.
 =cut
 
 # BEGIN CODE Copyright (C) 2012 by Andrew Johnson.
+
 sub initLoggers {
 	my $self = shift;
 	my $config = $self->getConfig();
@@ -1295,7 +1413,7 @@ Portions of this software, where noted, are
 Copyright (C) 2011-2012 by Andrew Johnson.
 
 Portions of this software, where noted, are
-Copyright (C) 2012 by Logical Helion, LLC.
+Copyright (C) 2012-3 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

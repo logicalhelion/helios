@@ -236,3 +236,16 @@ Helios::Panoptes is the central web-based administration tool for Helios.  You
 will only need to install it on one host.  Panoptes is packaged separately and 
 has its own installation instructions; refer its README for instructions.
 
+# FILE CHANGE HISTORY:
+# [2012-01-08]: Moved instructions for Red Hat-derived Linux distributions from
+# INSTALL to INSTALL.redhat.
+# [2012-01-22]: Changed mentions of Bundle::Helios to Bundle::Helios::RedHat. 
+# Expanded dependency module list in CPAN install instructions.  Other minor
+# clarity/grammar updates.
+# [2012-mm-dd]: Updated instructions for Red Hat/CentOS 6.x; due to differences
+# in packaging Perl in 6.x, the Helios instructions are different for 5.x and
+# 6.x.  Changed mentions of helios_schema.sql to helios_schema_mysql.sql.
+# Added instructions for Oracle schema installation.  Added Apache and 
+# Helios::Panoptes instructions for 5.x.  Added required module list if using
+# CPAN shell.  Changed all mentions of Bundle::Helios::RedHat to Bundle::Helios
+# since Bundle::Helios::RedHat was dropped.

@@ -1,6 +1,14 @@
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl Helios.t'
 
+# 2012-05-20:  Added tests for Helios::Error::BaseError, 
+# Helios::Error::DatabaseError, Helios::Error::InvalidArg, 
+# Helios::Error::LoggingError, Helios::Error, Helios::LogEntry::Levels,
+# Helios::LogEntry, Helios::Logger, Helios::Logger::Internal, 
+# Helios::ConfigParam, Helios::JobHistory, Helios::MetajobBurstService, and
+# Helios::TestService.
+# 2012-08-04:  Added tests for Helios::Config and Helios::Error::ConfigError.
+
 #########################
 
 # change 'tests => 1' to 'tests => last_test_to_print';

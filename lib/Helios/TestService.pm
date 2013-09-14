@@ -8,6 +8,9 @@ use base qw( Helios::Service );
 use Helios::Error;			
 use Helios::LogEntry::Levels qw(:all);
 
+# 2012-01-01:  Completely rewrote this to be more clear, concise, and to use
+# more up-to-date Perl.
+
 our $VERSION = '2.40';	
 
 =head1 NAME
@@ -156,7 +159,7 @@ L<Helios::Service>
 
 =head1 AUTHOR
 
-Andrew Johnson, E<lt>ajohnson at ittoolbox dotcomE<gt>
+Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 

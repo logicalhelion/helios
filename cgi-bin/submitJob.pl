@@ -14,6 +14,11 @@ use Helios::LogEntry::Levels ':all';
 
 our $VERSION = '2.41';
 
+# FILE CHANGE HISTORY
+# 2011-12-15: Complete rewrite to allow requester to send job arg XML in an 
+# HTTP POST w/o form encoding.  Also, HELIOS_CLASS_MAP lookup is no longer 
+# necessary.
+
 # grab the CGI params (we may not have any)
 my $cgi = CGI->new();
 my $type = $cgi->param('type');

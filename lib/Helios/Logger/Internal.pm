@@ -8,7 +8,11 @@ use warnings;
 use Helios::LogEntry::Levels qw(:all);
 use Helios::Error::LoggingError;
 
-our $VERSION = '2.41';
+our $VERSION = '2.61';
+
+# 2011-12-07:  The code of Helios::Service->logMsg() was moved here to 
+# implement internal logging as a Helios::Logger subclass.
+# 2012-01-02:  Re-added support for log_priority_threshold config parameter.
 
 =head1 NAME
 
@@ -65,12 +69,14 @@ sub logMsg {
 	my $jobType  = $self->getJobType();
 	my $hostname = $self->getHostname();
 
+# 2012-01-02:  Re-added support for log_priority_threshold config parameter.
     # if this log message's priority is lower than log_priority_threshold,
     # don't bother logging the message
     if ( defined($params->{log_priority_threshold}) &&
         $level > $params->{log_priority_threshold} ) {
         return 1;
     }
+# END 2012-01-02 modification.
 
 	my $retries = 0;
 	my $retry_limit = 3;

@@ -5,7 +5,13 @@ use strict;
 use warnings;
 use base qw(Data::ObjectDriver::Driver::DBI);
 
-our $VERSION = '2.60';
+our $VERSION = '2.61';
+
+# [LH] 2012-07-11: Changed the DBI connection creation to use connect_cached()
+# instead of connect() to implement connection caching.  Also added 
+# 'private_heliconn_$pid' option to ensure connections opened by separate 
+# processes stay separated.
+
 
 my %Handles;
 sub init_db {
@@ -16,6 +22,10 @@ sub init_db {
     }
     unless ($dbh) {
         eval {
+        	# [LH] 2012-07-11: Changed the DBI connection creation to use 
+        	# connect_cached() instead of connect() to implement connection 
+        	# caching.  Also added 'private_heliconn_$pid' option to ensure 
+        	# connections opened by separate processes stay separated.
             $dbh = DBI->connect_cached($driver->dsn, $driver->username, $driver->password,
                 { RaiseError => 1, PrintError => 0, AutoCommit => 1, 'private_heliconn_'.$$ => $$,
                 %{$driver->connect_options || {}} })
@@ -35,6 +45,7 @@ sub init_db {
 
 
 sub DESTROY {
+   	# [LH] 2012-07-11: Removed DBI->disconnect() call.
 	# Unlike in the base Data::ObjectDriver::Driver::DBI
 	# we don't want to disconnect the database connection
 	# EVEN IF we created it.

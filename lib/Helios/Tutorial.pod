@@ -1,3 +1,7 @@
+# 2012-01-22:  Greatly expanded tutorial.  Only the pieces marked (C) CEB
+# Toolbox were kept from the original version.  Changed all line endings so
+# lines end at column 80.
+
 =pod
 
 =head1 NAME
