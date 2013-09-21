@@ -20,7 +20,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
 use Helios::Config;
 
-our $VERSION = '2.61';
+our $VERSION = '2.61_201309210';
 
 # FILE CHANGE HISTORY
 # [2012-01-08]: Added a check to try to prevent loading code outside of @INC.
@@ -65,6 +65,8 @@ our $VERSION = '2.61';
 # Replaced write_pid_file() and mostly rewrote running_process_check() to 
 # prevent a PID file race condition.  
 # [LH] [2013-08-19]: Added comments for clarification of fix for [RT81914].
+# [LH] [2013-09-21]: Added code to enable job prioritization features in 
+# Helios::TheSchwartz.
 
 =head1 NAME
 
@@ -277,7 +279,7 @@ our %DEFAULTS = (
     REGISTRATION_INTERVAL => 60,
     WORKER_BLITZ_FACTOR => 1,
     WORKER_MAX_TTL_WAIT_INTERVAL => 20,
-	PRIORITIZE_JOBS => 0
+    PRIORITIZE_JOBS => 0
 );
 our $CLEAN_SHUTDOWN = 1;				# used to determine if we should remove the PID file or not (at least for now)
 
@@ -831,10 +833,15 @@ sub launch_worker {
     # just in case this would cause a problem in worker process
     $SIG{CHLD} = 'DEFAULT';
     $SIG{TERM} = 'DEFAULT';
-	my $client = Helios::TheSchwartz->new(
-		databases => $DATABASES_INFO,
-		prioritize => $params->{PRIORITIZE_JOBS} ? $params->{PRIORITIZE_JOBS} : $DEFAULTS{PRIORITIZE_JOBS}
+ 
+# BEGIN CODE Copyright (C) 2012-3 by Logical Helion, LLC.
+	# [LH] [2013-09-21]: Added code to enable job prioritization features in Helios::TheSchwartz.
+	my Helios::TheSchwartz $client = Helios::TheSchwartz->new(
+		databases  => $DATABASES_INFO,
+		prioritize => defined($params->{PRIORITIZE_JOBS}) ? $params->{PRIORITIZE_JOBS} : $DEFAULTS{PRIORITIZE_JOBS}
 	);
+# END CODE Copyright (C) 2012-3 by Logical Helion, LLC.
+
 	$client->can_do($worker_class);
 	my $return;
 	if ( defined($params->{OVERDRIVE}) && $params->{OVERDRIVE} == 1 ) {

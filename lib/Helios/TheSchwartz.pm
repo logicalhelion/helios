@@ -8,7 +8,14 @@ use Carp qw( croak );
 
 use constant OK_ERRORS => { map { $_ => 1 } Data::ObjectDriver::Errors->UNIQUE_CONSTRAINT, };
 
-our $VERSION = '2.61_201309130';
+our $VERSION = '2.61_201309210';
+
+# FILE CHANGE HISTORY:
+# [LH] [2012-07-11]: driver_for(): Changed driver creation to use Helios driver 
+# to cache database connections.
+# [LH] [2013-09-21]: find_job_for_workers(): Added code to enable job 
+# prioritization.
+
 
 our $T_AFTER_GRAB_SELECT_BEFORE_UPDATE;
 our $FIND_JOB_BATCH_SIZE = 50;
@@ -68,12 +75,13 @@ sub find_job_for_workers {
             my @ids = map { $client->funcname_to_id($driver, $hashdsn, $_) }
                       @$worker_classes;
 
-# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+# BEGIN CODE Copyright (C) 2012-3 by Logical Helion, LLC.
+			# [LH] [2013-09-21]: Added code to enable job prioritization.
 			my $direction = 'descend';
 			if ( $client->prioritize eq 'low' ) {
 				$direction = 'ascend';
 			}
-# END CODE Copyright (C) 2012 by Logical Helion, LLC.
+# END CODE Copyright (C) 2012-3 by Logical Helion, LLC.
 
             @jobs = $driver->search('TheSchwartz::Job' => {
                     funcid        => \@ids,
@@ -130,7 +138,7 @@ under the same terms as Perl itself.
 TheSchwartz comes with no warranty of any kind.
 
 Portions of this software, where noted, are
-Copyright (C) 2012 by Logical Helion, LLC.
+Copyright (C) 2012-3 by Logical Helion, LLC.
 
 =cut
 
