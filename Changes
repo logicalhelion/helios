@@ -1,4 +1,7 @@
 Revision history for Perl extension Helios.
+2.71_3860  Sat Sep 21 19:27:36 2013
+	- Added PRIORITIZE_JOBS feature.
+	- Added WORKER_LAUNCH_PATTERN feature.
 2.61  Fri Sep 13 20:02:14 2013
 	- Helios 2.61 is a bugfix release:
 	- helios.pl: Fix for [RT81709].
