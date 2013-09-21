@@ -20,7 +20,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
 use Helios::Config;
 
-our $VERSION = '2.61';
+our $VERSION = '2.61_201309211';
 
 # FILE CHANGE HISTORY
 # [2012-01-08]: Added a check to try to prevent loading code outside of @INC.
@@ -65,6 +65,7 @@ our $VERSION = '2.61';
 # Replaced write_pid_file() and mostly rewrote running_process_check() to 
 # prevent a PID file race condition.  
 # [LH] [2013-08-19]: Added comments for clarification of fix for [RT81914].
+# [LH] [2013-09-21]: Added code to implement WORKER_LAUNCH_PATTERN feature.
 
 =head1 NAME
 
@@ -585,6 +586,7 @@ MAIN_LOOP:{
 				# LAUNCHING WORKERS
 				# if we've got to this part of the loop, we have jobs that need workers to launch
 				# (though we still may not do it if we've already reached our limit)
+				# [LH] [2013-09-21]: Added code to implement WORKER_LAUNCH_PATTERN feature.
 				my $workers_to_launch = workers_to_launch($waiting_jobs, $running_workers, $max_workers);				
 #[]
 #				my $workers_to_launch = $max_workers - $running_workers;
@@ -1246,6 +1248,7 @@ sub require_module {
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
 # BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+# [LH] [2013-09-21]: Code to implement WORKER_LAUNCH_PATTERN feature.
 
 =head2 workers_to_launch($waiting_jobs, $running_workers, $max_workers)
 
