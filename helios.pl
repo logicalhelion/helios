@@ -279,8 +279,8 @@ our %DEFAULTS = (
     REGISTRATION_INTERVAL => 60,
     WORKER_BLITZ_FACTOR => 1,
     WORKER_MAX_TTL_WAIT_INTERVAL => 20,
-    PRIORITIZE_JOBS => 0
-	WORKER_LAUNCH_PATTERN => 'cons'
+    PRIORITIZE_JOBS => 0,
+	WORKER_LAUNCH_PATTERN => 'cons',
 );
 our $CLEAN_SHUTDOWN = 1;				# used to determine if we should remove the PID file or not (at least for now)
 

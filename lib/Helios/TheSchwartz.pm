@@ -8,7 +8,7 @@ use Carp qw( croak );
 
 use constant OK_ERRORS => { map { $_ => 1 } Data::ObjectDriver::Errors->UNIQUE_CONSTRAINT, };
 
-our $VERSION = '2.61_201309210';
+our $VERSION = '2.71_3860';
 
 # FILE CHANGE HISTORY:
 # [LH] [2012-07-11]: driver_for(): Changed driver creation to use Helios driver 
