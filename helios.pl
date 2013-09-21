@@ -20,7 +20,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TheSchwartz;
 use Helios::Config;
 
-our $VERSION = '2.61_201309210';
+our $VERSION = '2.71_3860';
 
 # FILE CHANGE HISTORY
 # [2012-01-08]: Added a check to try to prevent loading code outside of @INC.
@@ -66,7 +66,7 @@ our $VERSION = '2.61_201309210';
 # prevent a PID file race condition.  
 # [LH] [2013-08-19]: Added comments for clarification of fix for [RT81914].
 # [LH] [2013-09-21]: Added code to enable job prioritization features in 
-# Helios::TheSchwartz.
+# Helios::TheSchwartz.  Added code to implement WORKER_LAUNCH_PATTERN feature.
 
 =head1 NAME
 
@@ -280,6 +280,7 @@ our %DEFAULTS = (
     WORKER_BLITZ_FACTOR => 1,
     WORKER_MAX_TTL_WAIT_INTERVAL => 20,
     PRIORITIZE_JOBS => 0
+	WORKER_LAUNCH_PATTERN => 'cons'
 );
 our $CLEAN_SHUTDOWN = 1;				# used to determine if we should remove the PID file or not (at least for now)
 
@@ -587,14 +588,17 @@ MAIN_LOOP:{
 				# LAUNCHING WORKERS
 				# if we've got to this part of the loop, we have jobs that need workers to launch
 				# (though we still may not do it if we've already reached our limit)
-				my $workers_to_launch = $max_workers - $running_workers;
-				# if the number of waiting jobs is less than (max workers * worker blitz factor)
-				# then only launch one worker to reduce worker contention
-				# refresh worker blitz factor, then determine if we blitz or not
-				$WORKER_BLITZ_FACTOR = $params->{WORKER_BLITZ_FACTOR} ? $params->{WORKER_BLITZ_FACTOR} : $DEFAULTS{WORKER_BLITZ_FACTOR};
-				if ( ($workers_to_launch > 0) && ($waiting_jobs < ($max_workers * $WORKER_BLITZ_FACTOR ) ) ) {
-					$workers_to_launch = 1;
-				}
+				# [LH] [2013-09-21]: Added code to implement WORKER_LAUNCH_PATTERN feature.
+				my $workers_to_launch = workers_to_launch($waiting_jobs, $running_workers, $max_workers);				
+#[]
+#				my $workers_to_launch = $max_workers - $running_workers;
+#				# if the number of waiting jobs is less than (max workers * worker blitz factor)
+#				# then only launch one worker to reduce worker contention
+#				# refresh worker blitz factor, then determine if we blitz or not
+#				$WORKER_BLITZ_FACTOR = $params->{WORKER_BLITZ_FACTOR} ? $params->{WORKER_BLITZ_FACTOR} : $DEFAULTS{WORKER_BLITZ_FACTOR};
+#				if ( ($workers_to_launch > 0) && ($waiting_jobs < ($max_workers * $WORKER_BLITZ_FACTOR ) ) ) {
+#					$workers_to_launch = 1;
+#				}
 				$worker->logMsg(LOG_NOTICE, "$waiting_jobs jobs waiting; $running_workers workers running; launching $workers_to_launch workers");
 				for (my $i = 0; $i < $workers_to_launch; $i++) {
 		
@@ -1249,6 +1253,78 @@ sub require_module {
 		exit(1);
 	}
 	return 1;
+}
+
+# END CODE Copyright (C) 2012 by Logical Helion, LLC.
+
+# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+# [LH] [2013-09-21]: Code to implement WORKER_LAUNCH_PATTERN feature.
+
+=head2 workers_to_launch($waiting_jobs, $running_workers, $max_workers)
+
+=cut
+
+sub workers_to_launch {
+	my $waiting_jobs = shift;
+	my $running_workers = shift;
+	my $max_workers = shift;
+	my $wlp = defined($params->{WORKER_LAUNCH_PATTERN}) ? $params->{WORKER_LAUNCH_PATTERN} : $DEFAULTS{WORKER_LAUNCH_PATTERN};
+
+	# how many workers are we able to launch?
+	my $available_workers = $max_workers - $running_workers;
+	
+	# if we cannot launch any more workers, then we cannot launch any workers
+	if ( $available_workers <= 0 ) {
+		return 0;
+	}
+
+	# if the waiting jobs >= max_workers, forget all the launcher patterns and blitz
+	if ( $waiting_jobs >= $max_workers ) {
+		return $available_workers;
+	}
+
+	# ok, we might be able to launch some workers
+	SWITCH: {
+		# opportunistic
+		# for big, fast collective databases with lots of short running jobs
+		if ( $wlp eq 'oppt') {
+			# launch a worker for each waiting job, 
+			# or all available workers
+			# whichever is less
+			if ( $available_workers < $waiting_jobs ) {
+				return $available_workers;
+			} else {
+				return $waiting_jobs;
+			}
+		}
+		# progressive
+		# for fast collectives that need to launch workers more slowly
+		# e.g. an app with a slow or limited shared resource
+		# this will be the the Helios 3.x default
+		if ( $wlp eq 'prog') {
+			# launch the difference between running workers and waiting jobs
+			# e.g. 14 waiting jobs, 10 workers running, launch 4
+			# if waiting jobs exceed available workers, just launch available workers
+			my $diff = $waiting_jobs - $running_workers;
+			if ( $diff <= 0  ) { $diff = 1; }
+			if ( $available_workers < $diff ) {
+				return $available_workers;
+			} else {
+				return $diff;
+			}
+		}
+		# conservative
+		# for slow collective databases, or apps that only run a 
+		# smaller number of jobs, or longer running jobs
+		# this was the Helios 2.x default
+		if ( $wlp eq 'cons') {
+			return 1;
+		}
+		# the default is actually 'conservative'
+		return 1;
+	}
+
+
 }
 
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
