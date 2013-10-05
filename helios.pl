@@ -17,10 +17,11 @@ use Error qw(:try);
 use Helios;
 use Helios::Error;
 use Helios::LogEntry::Levels qw(:all);
-use Helios::TheSchwartz;
+# [LH] [2013-10-04]: Switched to using Helios::TS for virtual jobtypes.
+use Helios::TS;
 use Helios::Config;
 
-our $VERSION = '2.71_3860';
+our $VERSION = '2.71_4051';
 
 # FILE CHANGE HISTORY
 # [2012-01-08]: Added a check to try to prevent loading code outside of @INC.
@@ -67,6 +68,12 @@ our $VERSION = '2.71_3860';
 # [LH] [2013-08-19]: Added comments for clarification of fix for [RT81914].
 # [LH] [2013-09-21]: Added code to enable job prioritization features in 
 # Helios::TheSchwartz.  Added code to implement WORKER_LAUNCH_PATTERN feature.
+# [LH] [2013-10-04]: Added code to implement "virtual jobtypes."  Switched to 
+# using Helios::TS instead of Helios::TheSchwartz.  Changed command line 
+# option parsing to accomodate options other than "--clear-halt".  Removed 
+# old commented out code for class name sanity checking and class loading.  
+# Removed old code to calculate workers to launch, also removed code for 
+# WORKER_BLITZ_FACTOR feature (WORKER_LAUNCH_PATTERN replaces it).
 
 =head1 NAME
 
@@ -265,7 +272,30 @@ our $HELIOS_PL_PATH = File::Spec->catfile($FindBin::Bin, $basename);
 # globals settings
 our $DEBUG_MODE = $ENV{HELIOS_DEBUG};
 our $HELIOS_INI = $ENV{HELIOS_INI};
-our $CLASS = shift @ARGV;
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+# [LH] [2013-10-04]: Virtual jobtypes.  We have to parse the cmd line args 
+# in a completely different way, but still maintain backward compatibility. 
+# if the first cmd line switch starts with '-', then all the options are 
+# "proper."  If not, then the first option is the service class, and the 
+# remaining options will be proper.
+our $CLASS;
+our $OPT_CLEAR_HALT = 0;
+our $OPT_HELP       = 0;
+our $OPT_JOBTYPES   = '';
+our $OPT_VERSION    = 0;
+if ($ARGV[0] !~ /^\-/) {
+	$CLASS = shift @ARGV;
+}
+GetOptions(
+	"service=s"  => \$CLASS,
+	"clear-halt" => \$OPT_CLEAR_HALT,
+	"help"       => \$OPT_HELP,
+	"jobtypes=s" => \$OPT_JOBTYPES,
+	"version"    => \$OPT_VERSION,
+);
+$OPT_JOBTYPES =~ s/ //g;	#[]more sanity checking!
+our @ALT_JOBTYPES = split(/,/, $OPT_JOBTYPES);
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
 # other globals
 # max workers will default to 1 if not set elsewhere
@@ -313,7 +343,8 @@ our $WORKER_BLITZ_FACTOR = 1;			# used to determine how many workers to launch
 our $HELIOS_DB_CONN;					# database handle to help with DBI+forking issues
 
 # print help if asked
-if ( !defined($CLASS) || ($CLASS eq '--help') || ($CLASS eq '-h') ) {
+# [LH] [2013-10-04]: New @ARGV parsing for "--help". 
+if ( !defined($CLASS) || $OPT_HELP ) {
 	require Pod::Usage;
 	Pod::Usage::pod2usage(-verbose => 2, -exitstatus => 0);
 }
@@ -323,16 +354,11 @@ my $worker_class = $CLASS;
 print "Helios ",$Helios::VERSION,"\n";
 print "helios.pl Service Daemon version $VERSION\n";
 # --version support
-if ( $CLASS eq '--version') { exit(); }
-#if ( $worker_class !~ /^[A-Za-z]([A-Za-z0-9_\-]|:{2})*[A-Za-z0-9_\-]$/ ) {
-#	print "Sorry, requested name is invalid: $worker_class\n";
-#	exit(1);
-#}
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+# [LH] [2013-10-04]: New @ARGV parsing for "--version".
+if ( $OPT_VERSION ) { exit(0); }
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 print "Attempting to load $worker_class...\n"; 
-#unless ( $worker_class->can('new') ) {
-#        eval "require $worker_class";
-#        die $@ if $@;
-#}
 unless ( $worker_class ) {
 	print "You must specify the module name of a Helios service.\n";
 	exit(1);
@@ -355,6 +381,13 @@ if ( defined($HELIOS_INI) ) {
         $worker->setIniFile( $DEFAULTS{HELIOS_INI} );
 }
 $worker->setJobType($worker_class);
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+# [LH] [2013-10-04]: Virtual jobtypes set & init.
+if (@ALT_JOBTYPES) {
+	$worker->setAltJobTypes(@ALT_JOBTYPES); 
+	$worker->lookupAltJobtypeids();
+}
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 $worker->debug($DEBUG_MODE);
 eval {
 	$worker->prep();
@@ -437,7 +470,8 @@ my $times_sleeping = 0;
 # then we'll check to see if HALT is still there
 # if it is, we'll have to stop here rather than 
 # daemonize and launch the main loop
-if ( defined($ARGV[0]) && lc($ARGV[0]) eq '--clear-halt' ) {
+# [LH] [2013-10-04]: New @ARGV parsing for "--clear-halt". 
+if ( $OPT_CLEAR_HALT ) {
 	clear_halt();
 	$worker->prep();
 	$params = $worker->getConfig();
@@ -468,6 +502,7 @@ unless ($DEBUG_MODE) {
 # set up signal handler to reap dead children
 $SIG{CHLD} = \&reaper;
 $SIG{TERM} = \&terminator;
+
 
 =head1 HELIOS OPERATION
 
@@ -590,15 +625,6 @@ MAIN_LOOP:{
 				# (though we still may not do it if we've already reached our limit)
 				# [LH] [2013-09-21]: Added code to implement WORKER_LAUNCH_PATTERN feature.
 				my $workers_to_launch = workers_to_launch($waiting_jobs, $running_workers, $max_workers);				
-#[]
-#				my $workers_to_launch = $max_workers - $running_workers;
-#				# if the number of waiting jobs is less than (max workers * worker blitz factor)
-#				# then only launch one worker to reduce worker contention
-#				# refresh worker blitz factor, then determine if we blitz or not
-#				$WORKER_BLITZ_FACTOR = $params->{WORKER_BLITZ_FACTOR} ? $params->{WORKER_BLITZ_FACTOR} : $DEFAULTS{WORKER_BLITZ_FACTOR};
-#				if ( ($workers_to_launch > 0) && ($waiting_jobs < ($max_workers * $WORKER_BLITZ_FACTOR ) ) ) {
-#					$workers_to_launch = 1;
-#				}
 				$worker->logMsg(LOG_NOTICE, "$waiting_jobs jobs waiting; $running_workers workers running; launching $workers_to_launch workers");
 				for (my $i = 0; $i < $workers_to_launch; $i++) {
 		
@@ -823,6 +849,8 @@ sub double_clutch {
 
 =head2 launch_worker()
 
+#[] fix this POD - Helios::TS not TheSchwartz
+
 The launch_worker() function launches a new worker process.  
 After the fork() from the main process, the new child process will call 
 launch_worker().  The launch_worker() function will instantiate a new 
@@ -840,13 +868,24 @@ sub launch_worker {
  
 # BEGIN CODE Copyright (C) 2012-3 by Logical Helion, LLC.
 	# [LH] [2013-09-21]: Added code to enable job prioritization features in Helios::TheSchwartz.
-	my Helios::TheSchwartz $client = Helios::TheSchwartz->new(
+	# [LH] [2013-10-04]: Virtual jobtypes:  switched to using Helios::TS.
+	my Helios::TS $client = Helios::TS->new(
 		databases  => $DATABASES_INFO,
 		prioritize => defined($params->{PRIORITIZE_JOBS}) ? $params->{PRIORITIZE_JOBS} : $DEFAULTS{PRIORITIZE_JOBS}
 	);
 # END CODE Copyright (C) 2012-3 by Logical Helion, LLC.
-
 	$client->can_do($worker_class);
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+	# [LH] [2013-10-04]: Virtual jobtypes:  Set up Helios::TS object with 
+	# alt jobtypes and designate the "Active Worker Class" (the service class
+	# that is actually running the jobs).
+	if ($worker->getAltJobTypes) {
+		$client->set_active_worker_class($worker_class);
+		for ($worker->getAltJobTypes) {
+			$client->can_do($_);
+		}
+	}
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 	my $return;
 	if ( defined($params->{OVERDRIVE}) && $params->{OVERDRIVE} == 1 ) {
 		$return = $client->work_until_done();			

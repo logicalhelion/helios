@@ -8,7 +8,6 @@ use File::Spec;
 use Sys::Hostname;
 use DBI;
 use Helios::ObjectDriver::DBI;
-require XML::Simple;
 
 use Helios::Error;
 use Helios::Job;
@@ -16,8 +15,11 @@ use Helios::Config;
 use Helios::ConfigParam;
 use Helios::LogEntry;
 use Helios::LogEntry::Levels qw(:all);
+# [LH] [2013-10-04]: Using Helios::JobType instead of TheSchwartz::FuncMap now.
+use Helios::JobType;
+use Helios::Error::JobTypeError;
 
-our $VERSION = '2.61';
+our $VERSION = '2.61_4051';
 
 # FILE CHANGE HISTORY:
 # [2011-12-07]: Updated to support new Helios::Logger API.  Added 
@@ -102,6 +104,18 @@ our $VERSION = '2.61';
 # initialization errors.  [RT79690]
 # [LH] [2013-08-19]: Removed old commented out code and clarified comments on 
 # job initialization error handling.
+# [LH] [2013-10-04]: Added code to start conversion to new Helios class 
+# structure and support virtual jobtypes feature.  New new() constructor 
+# initializes attribute hashref values and can only be called as a class 
+# method.  Added set/get/addJobType(), set/getAltJobTypes(), 
+# set/getAltJobtypeids(), addAltJobtypeid(), lookupJobtypeid(), 
+# lookupAltJobtypeids().  Switched all code that used TheSchwartz::FuncMap to 
+# use Helios::JobType.  Replaced set/getFuncid() with new version that mirrors 
+# set/getJobType() (set/getFuncid() will be deprecated on final release).  
+# Replaced jobsWaiting() with new version that uses Helios::JobType and scans 
+# for all jobtypes (primary and alternates) if alternate jobtypes are set.
+# [LH] [2013-10-04] Removed 'require XML::Simple' line because Helios::Service 
+# has not used that in a long time.
 
 
 =head1 NAME
@@ -432,8 +446,11 @@ sub getJobType { return $_[0]->{jobType}; }
 sub setConfig { $_[0]->{config} = $_[1]; }
 sub getConfig { return $_[0]->{config}; }
 
-sub setFuncid { $_[0]->{funcid} = $_[1]; }
-sub getFuncid { return $_[0]->{funcid}; }
+# [LH] [2013-10-04]: Virtual jobtypes.  Changed set/getFuncid() for 
+# compatibility with set/getJobtypeid().  Set/getFuncid() is DEPRECATED;
+# retained for now for backward compatibility with Helios 2.6x and earlier.
+sub setFuncid { $_[0]->{jobtypeid} = $_[1]; }
+sub getFuncid { return $_[0]->{jobtypeid}; }
 
 sub setIniFile { $_[0]->{inifile} = $_[1]; }
 sub getIniFile { return $_[0]->{inifile}; }
@@ -466,7 +483,7 @@ It does set the job type for the object (available via the getJobType() method).
 
 =cut
 
-sub new {
+sub new_old {
 	my $caller = shift;
 	my $class = ref($caller) || $caller;
 #	my $self = $class->SUPER::new(@_);
@@ -709,7 +726,7 @@ waiting.  Only meant for use with the helios.pl service daemon.
 
 =cut
 
-sub jobsWaiting {
+sub jobsWaiting_old {
 	my $self = shift;
 	my $params = $self->getConfig();
 	my $jobType = $self->getJobType();
@@ -1387,6 +1404,165 @@ sub _require_module {
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
 
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+
+# [LH] [2013-10-04] Virtual jobtype support code!  All this code adds
+# support to the class for "alternate jobtypes" and makes sure jobsWaiting()
+# takes all jobtypes into account when jobs are scanned for in the JOB table.
+
+#[] this code should be distributed to their respective places in the class
+# before final release.  During development and testing, they can stay here 
+# for now since they're all here to support virtual jobtypes.
+
+# [LH] [2013-10-04] Virtual jobtype code.
+sub setJobtypeid { $_[0]->{jobtypeid} = $_[1]; }
+sub getJobtypeid { return $_[0]->{jobtypeid}; }
+
+# [LH] [2013-10-04] Virtual jobtype code.
+sub setAltJobTypes {
+	my $self = shift;
+	$self->{altJobTypes} = [@_];
+}
+sub getAltJobTypes {
+	if ( defined $_[0]->{altJobTypes} ) {
+		return @{ $_[0]->{altJobTypes} };
+	} else {
+		return undef;
+	}
+}
+sub addAltJobType {
+	push(@{ $_[0]->{altJobTypes} }, $_[1]);
+}
+
+# [LH] [2013-10-04] Virtual jobtype code.
+sub setAltJobtypeids {
+	my $self = shift;
+	$self->{altJobtypeids} = [@_];
+}
+sub getAltJobtypeids {
+	if ( defined $_[0]->{altJobtypeids} ) {
+		return @{ $_[0]->{altJobtypeids} };
+	} else {
+		return undef;
+	}
+}
+sub addAltJobtypeid {
+	push(@{ $_[0]->{altJobtypeids} }, $_[1]);
+}
+
+# [LH] [2013-10-04] Virtual jobtype code.
+=head2 lookupAltJobtypeids(@jobtypenames)
+
+=cut
+
+sub lookupAltJobtypeids {
+	my $self = shift;
+	my @jobtypes = @_ || $self->getAltJobTypes();
+	my $config = $self->getConfig();
+	my @ids;
+	
+	for (@jobtypes) {
+		my $jtid = $self->lookupJobtypeid($_);
+		unless ($jtid) { Helios::Error::JobTypeError->throw("lookupAltJobtypeids(): $_ cannot be found in collective database."); }
+		push(@ids, $jtid);
+		$self->addAltJobtypeid($jtid);
+	}
+	return @ids;
+}
+
+=head2 lookupJobtypeid($jobtypename)
+
+=cut
+
+sub lookupJobtypeid {
+	my $self = shift;
+	my $jt = shift;
+
+	my $jobtype = Helios::JobType->lookup(name => $jt, config => $self->getConfig());
+	if ($jobtype) {
+		return $jobtype->getJobtypeid();
+	} else {
+		return undef;
+	}
+}
+
+
+# [LH] [2013-10-04] jobsWaiting() replaced with new version for virtual 
+# jobtypes.    
+sub jobsWaiting {
+	my $self = shift;
+	my $num_of_jobs = 0;
+	my $primary_jobtypeid = $self->getJobtypeid();
+	my @alt_jobtypeids;
+	my $sth;
+	eval {
+		my $dbh = $self->dbConnect();
+		unless ( defined($primary_jobtypeid) ) {
+			$primary_jobtypeid = $self->lookupJobtypeid($self->getJobType);
+			$self->setJobtypeid($primary_jobtypeid);
+		}
+		if ( $self->getAltJobTypes() ) {
+			if ( $self->getAltJobtypeids() ) {
+				@alt_jobtypeids = $self->getAltJobtypeids();
+			} else {
+				@alt_jobtypeids = $self->lookupAltJobtypeids();
+			}
+		}
+		
+		if (@alt_jobtypeids) {
+			my @plhrs = ('?');	# one for the primary
+			for (@alt_jobtypeids) { push(@plhrs,'?'); }
+			my $plhrs_str = join(',' => @plhrs);
+			
+			$sth = $dbh->prepare_cached("SELECT COUNT(*) FROM job WHERE funcid IN($plhrs_str) AND (run_after < ?) AND (grabbed_until < ?)");
+			$sth->execute($primary_jobtypeid, @alt_jobtypeids, time(), time());
+		} else {
+			$sth = $dbh->prepare_cached('SELECT COUNT(*) FROM job WHERE funcid = ? AND (run_after < ?) AND (grabbed_until < ?)');
+			$sth->execute($primary_jobtypeid, time(), time());
+		}
+		my $r = $sth->fetchrow_arrayref();
+		$sth->finish();
+		$num_of_jobs = $r->[0];
+		
+		1;
+	} or do {
+		my $E = $@;
+		Helios::Error::DatabaseError->throw("$E");
+	};
+	
+	return $num_of_jobs;
+}
+
+
+# [LH] [2013-10-04] New constructor initializes attributes in the underlying
+# object structure and can only be called as a class method.  
+sub new {
+	my $cl = shift;
+	my $self = {
+		'jobType'       => undef,
+		'altJobTypes'   => undef,
+		'jobtypeid'     => undef,
+		'altJobtypeids' => undef,
+		'hostname'      => undef,
+		'inifile'       => undef,
+		'job'           => undef,
+		
+		'config' => undef,
+		'debug'  => undef,
+		'errstr' => undef,
+	};
+	bless $self, $cl;
+
+	# init fields
+	my $jobtype = $cl;
+	$self->setJobType($jobtype);
+
+	return $self;
+}
+
+
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
+
 
 
 1;
@@ -1396,7 +1572,7 @@ __END__
 =head1 SEE ALSO
 
 L<Helios>, L<helios.pl>, L<Helios::Job>, L<Helios::Error>, L<Helios::Config>, 
-L<TheSchwartz>
+L<Helios::JobType>
 
 =head1 AUTHOR
 
