@@ -48,6 +48,8 @@ lib/Helios/ObjectDriver/DBI.pm
 lib/Helios/Service.pm
 lib/Helios/TestService.pm
 lib/Helios/TheSchwartz.pm
+lib/Helios/TS.pm
+lib/Helios/TS/Job.pm
 lib/Helios/Tutorial.pod
 LICENSE
 Makefile.PL
