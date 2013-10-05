@@ -1,4 +1,36 @@
 Revision history for Perl extension Helios.
+2.71_4051  Fri Oct  4 23:24:16 2013
+	- Added code for "virtual jobtypes" - jobtypes w/o a service 
+	  class.  Allows a service to handle jobs of multiple jobtypes 
+	  without creating new service classes.
+	- NEW Helios::ObjectDriver class to improve driver init 
+	  handling.
+	- NEW Helios::JobType class to represent jobtypes; there should 
+	  no longer be a need to use TheSchwartz::FuncMap directly.
+	- NEW Helios::TS and Helios::TS::Job to:
+	  - replace Helios::TheSchwartz as a full-featured TheSchwartz
+	    subclass.
+	  - implement virtual jobtypes.
+	  - fix [RT79690] by dumping Helios::TS::Job objects w/o arg() 
+	    values before they are passed to the higher Helios layers.
+	- NEW helios_jobtype_add.pl to handle adding new jobtypes from 
+	  the command line.
+	- helios.pl:
+	  - now handles @ARGV completely differently to support virtual 
+	    jobtype specification and add other options in future.
+	  - uses Helios::TS instead of Helios::TheSchwartz
+	- Helios::Service:
+	  - new, better constructor 
+	  - ton of NEW methods to support virtual jobtypes:
+	    set/getJobType()
+	    addAltJobType()
+	    set/getAltJobTypes() 
+	    set/getAltJobtypeids()
+	    addAltJobtypeid() 
+	    lookupAltJobtypeids()
+	    lookupJobtypeid()
+	  - jobsWaiting(): rewritten to support multiple, "virtual" 
+	    jobtypes
 2.71_3860  Sat Sep 21 19:27:36 2013
 	- Added PRIORITIZE_JOBS feature.
 	- Added WORKER_LAUNCH_PATTERN feature.
