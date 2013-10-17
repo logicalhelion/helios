@@ -8,7 +8,6 @@ WriteMakefile(
     AUTHOR            => 'Andrew Johnson <lajandy at cpan dotorg>',
     ABSTRACT          => 'A system for distributed job processing applications.',
     (ExtUtils::MakeMaker->VERSION >= 6.3002 ? (LICENSE => 'perl') : () ),
-    LICENSE           => 'perl',
     VERSION_FROM      => 'lib/Helios.pm', # finds $VERSION
     PREREQ_PM         => {   Test::Simple           => 0.72,
                              Data::ObjectDriver     => 0.04,
@@ -19,7 +18,11 @@ WriteMakefile(
                              XML::Simple            => 2.14,
                              Pod::Usage             => 0.01
 							},
-    EXE_FILES         => [ 'helios.pl', 'helios_job_submit.pl', 'helios_log_clean.pl'],
+    EXE_FILES         => [ 'helios.pl', 'helios_job_submit.pl', 'helios_log_clean.pl',
+                           'helios_jobtype_add.pl', 'helios_config_get.pl',
+                           'helios_config_set.pl', 'helios_config_unset.pl',
+                           'helios_config_import.pl',
+                         ],
     INST_SCRIPT       => 'bin',
     (ExtUtils::MakeMaker->VERSION >= 6.46 ? 
     	(META_MERGE   => {
@@ -46,3 +49,6 @@ WriteMakefile(
 # if the loaded ExtUtils::MakeMaker version supports them.  Corrected 
 # {repository} section of META_MERGE=>{resources} and added explicit meta-spec 
 # version.
+# [LH] [2013-10-16]: Removed old LICENSE line.  Added helios_config_* and 
+# helios_jobtype_add.pl to EXE_FILES.
+

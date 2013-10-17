@@ -14,6 +14,10 @@ eg/MP3IndexerService-1.00/t/MP3IndexerService.t
 eg/StubService.pm
 helios.ini
 helios.pl
+helios_config_get.pl
+helios_config_import.pl
+helios_config_set.pl
+helios_config_unset.pl
 helios_job_submit.pl
 helios_jobtype_add.pl
 helios_log_clean.pl
@@ -24,6 +28,7 @@ lib/Bundle/Helios.pm
 lib/Helios.pm
 lib/Helios/Config.pm
 lib/Helios/ConfigParam.pm
+lib/Helios/Configuration.pod
 lib/Helios/Error.pm
 lib/Helios/Error/BaseError.pm
 lib/Helios/Error/ConfigError.pm
