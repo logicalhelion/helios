@@ -12,7 +12,7 @@ use Helios::ObjectDriver::DBI;
 use Helios::ConfigParam;
 use Helios::Error::ConfigError;
 
-our $VERSION = '2.71_20131018';
+our $VERSION = '2.71_4250';
 
 =head1 NAME
 
