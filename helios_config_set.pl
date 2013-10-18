@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.71_20131016';
+our $VERSION = '2.71_20131018';
 
 our $Service_Name;
 our $Param_Name;
@@ -36,9 +36,8 @@ if ($Debug_Mode) { Helios::Config->debug(1); }
 
 # help mode
 if ($Help_Mode) {
-	my @help_args = ('perldoc', basename($0));
-	exec @help_args or warn "$0: Failed to execute perldoc: $!\n";
-	exit(1);
+	require Pod::Usage;
+	Pod::Usage::pod2usage(-verbose => 2, -exitstatus => 0);
 }
 
 # stop if we were not given at least service and param

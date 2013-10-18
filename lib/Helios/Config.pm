@@ -12,7 +12,7 @@ use Helios::ObjectDriver::DBI;
 use Helios::ConfigParam;
 use Helios::Error::ConfigError;
 
-our $VERSION = '2.71_20131016';
+our $VERSION = '2.71_20131018';
 
 =head1 NAME
 
@@ -601,9 +601,9 @@ sub parseConfDb {
 sub getParam {
 	my $self = shift;
 	my %params = @_;
-	my $service_name = defined($params{service_name}) ? $params{service_name} : $self->getServiceName; #[]caps
-	my $param_name   = $params{param};   #[]caps
-	my $host         = defined($params{hostname}) ? $params{hostname} : $self->getHostname();    #[]caps
+	my $service_name = defined($params{service_name}) ? $params{service_name} : $self->getServiceName;
+	my $param_name   = $params{param};
+	my $host         = defined($params{hostname}) ? $params{hostname} : $self->getHostname();
 	my $conf = {};
 
 	# shortcut: if the current config hash has already been retrieved
@@ -697,10 +697,10 @@ sub getAllParams {
 sub setParam {
 	my $self = shift;
 	my %params = @_;
-	my $service_name = defined($params{service_name}) ? $params{service_name} : $self->getServiceName; #[]caps
-	my $param_name   = $params{param};   #[]caps
-	my $host         = defined($params{hostname}) ? $params{hostname} : $self->getHostname;    #[]caps
-	my $value        = $params{value};	 #[]caps
+	my $service_name = defined($params{service_name}) ? $params{service_name} : $self->getServiceName;
+	my $param_name   = $params{param};  
+	my $host         = defined($params{hostname}) ? $params{hostname} : $self->getHostname;   
+	my $value        = $params{value};
 	my $cp;
 
 	# if we don't have everything, stop before we try
@@ -773,9 +773,9 @@ sub setParam {
 sub unsetParam {
 	my $self = shift;
 	my %params = @_;
-	my $service_name = defined($params{service_name}) ? $params{service_name} : $self->getServiceName; #[]caps
-	my $param_name   = $params{param};   #[]caps
-	my $host         = defined($params{hostname}) ? $params{hostname} : $self->getHostname;    #[]caps
+	my $service_name = defined($params{service_name}) ? $params{service_name} : $self->getServiceName;
+	my $param_name   = $params{param};   
+	my $host         = defined($params{hostname}) ? $params{hostname} : $self->getHostname;
 	my $cp;
 
 	# if we don't have everything, stop before we try
