@@ -10,7 +10,7 @@ use Helios::ObjectDriver;
 use Helios::Error;
 use Helios::Error::JobTypeError;
 
-our $VERSION = '2.71_4051';
+our $VERSION = '2.71_4250';
 
 =head1 NAME
 
@@ -50,6 +50,8 @@ configured to service jobs of several jobtypes.
  set/getDriver    Data::ObjectDriver to Helios database
 
 =cut
+
+sub debug { defined($_[1]) ? $_[0]->{debug} = $_[1] : return $_[0]->{debug} }
 
 sub setName {
 	$_[0]->{name} = $_[1];
@@ -101,6 +103,7 @@ sub new {
 		name      => undef,
 
 		_obj      => undef,
+		debug     => undef,
 		driver    => undef,
 		config    => undef,
 	};
@@ -121,6 +124,7 @@ sub init {
 	my $self = shift;
 	my %params = @_;
 	# populate any params we were given
+	$self->{debug}     = $params{debug};
 	$self->{name}      = $params{name};
 	$self->{jobtypeid} = $params{jobtypeid};
 	$self->{driver}    = $params{driver};
@@ -176,6 +180,7 @@ sub lookup {
 	my $jobtypeid = $params{jobtypeid};
 	my $name      = $params{name};
 	my $config    = $params{config};
+	my $debug     = $params{debug} || 0;
 	my $drvr;
 	my $obj;
 	
@@ -203,7 +208,12 @@ sub lookup {
 	
 	if (defined($obj)) {
 		# we found it!
-		return Helios::JobType->new(obj => $obj, driver => $drvr, config => Helios::ObjectDriver->getConfig());		
+		return Helios::JobType->new(
+			obj => $obj, 
+			driver => $drvr, 
+			config => Helios::ObjectDriver->getConfig(),
+			debug  => $debug,
+		);		
 	} else {
 		# we didn't find it
 		return undef;

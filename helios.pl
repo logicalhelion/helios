@@ -21,7 +21,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TS;
 use Helios::Config;
 
-our $VERSION = '2.71_4051';
+our $VERSION = '2.71_4250';
 
 # FILE CHANGE HISTORY
 # [2012-01-08]: Added a check to try to prevent loading code outside of @INC.
@@ -74,6 +74,12 @@ our $VERSION = '2.71_4051';
 # old commented out code for class name sanity checking and class loading.  
 # Removed old code to calculate workers to launch, also removed code for 
 # WORKER_BLITZ_FACTOR feature (WORKER_LAUNCH_PATTERN replaces it).
+# [LH] [2013-10-18]: Replaced most try {} blocks with eval {}.  Changed option 
+# handling to better handle --help and fix --version.  Added --debug option.  
+# Changed $CLASS to $OPT_CLASS like all the other $OPT_* option variables.  
+# Added startup message so user knows which collective db the daemon connected 
+# to.  Partially updated POD with new options and mentioned new 
+# Helios::Configuration POD; also added mention of zero_sleep_interval option.
 
 =head1 NAME
 
@@ -81,29 +87,45 @@ helios.pl - Launch a daemon to service jobs in the Helios job processing system
 
 =head1 SYNOPSIS
 
+ # Make sure HELIOS_INI is set and exported.  Optionally enable debug mode.
  export HELIOS_INI=/path/to/helios.ini
  [export HELIOS_DEBUG=1]
- helios.pl <jobclass> [--clear-halt]
+ # Full command line options 
+ helios.pl [--service=<service class>] [--jobtypes=<jobtypename,jobtypename>] \
+ [--clear-halt] [--version] [--help]
 
- # just prints version info
+ # Simple cmd line example: start a daemon with the Helios::TestService service.
+ helios.pl Helios::TestService
+ 
+ # More complex: start a Helios::TestService daemon, but have it run MyService jobs.
+ helios.pl --service=Helios::TestService --jobtypes=MyService
+
+ # Just prints version info.
  helios.pl --version
+ 
+ # Prints this help page.
+ helios.pl --help
 
 =head1 DESCRIPTION
 
-The helios.pl program, given a subclass of Helios::Service, will launch a daemon to service Helios 
-jobs of that subclass.  The number of worker processes to run concurrently and various other 
-parameters are set via a helios.ini file and the Helios database (the connection information 
-of which is also defined in helios.ini).
+The helios.pl program, given a Helios service class, will launch a daemon
+to service Helios jobs of that class.  The number of worker processes to run 
+concurrently and various other parameters are set via a helios.ini file and the 
+Helios collective database (the connection information of which is also defined 
+in helios.ini).
 
-Under normal operation, helios.pl will attempt to load the service class specified on the command 
-line and use it to read the contents of the helios.ini file.  If successful, it will attempt to 
-connect to the Helios collective database and read the relevant configuration parameters from 
-there.  If that is successful, helios.pl will daemonize and start servicing jobs of the specified 
-class.
+Under normal operation, helios.pl will attempt to load the service class 
+specified on the command line and use it to read the contents of the helios.ini 
+file.  If successful, it will attempt to connect to the Helios collective 
+database and read the relevant configuration parameters from there.  If that is 
+successful, helios.pl will daemonize and start servicing jobs of the specified 
+class.  If additional jobtypes are specified with the --jobtypes option, jobs of
+those additional types will also be serviced by the loaded service class.
 
-In debug mode (set HELIOS_DEBUG=1), helios.pl will not disconnect from the terminal, and will 
-output extra debugging information to the screen and the Helios log.  It will also enable debug mode 
-on the service class, which may also support the output of extra debugging information.
+In debug mode (set HELIOS_DEBUG=1), helios.pl will not disconnect from the 
+terminal, and will output extra debugging information to the screen and the 
+Helios log.  It will also enable debug mode on the service class, which may 
+also support the output of extra debugging information if you so choose.
 
 If the --clear-halt option is specified, helios.pl will attempt to remove a HALT
 parameter specified in the Helios configuration for the specified service on the
@@ -113,10 +135,9 @@ specified globally (where host = '*').
 
 =head1 HELIOS.INI
 
-The initial parameters for helios.pl are defined in an INI-style configuration file typically 
-named "helios.ini".  The file's location is normally specified by setting the HELIOS_INI 
-environment variable before helios.pl is started.  If HELIOS_INI is not set, helios.pl will default 
-to the helios.ini in the current directory, if present.
+The initial parameters for helios.pl are defined in an INI-style configuration 
+file typically named "helios.ini".  The file's location is normally specified 
+by setting the HELIOS_INI environment variable before helios.pl is started.  
 
 A helios.ini file normally contains a [global] section with the parameters 
 necessary to connect to the Helios collective database, and any parameters local
@@ -135,26 +156,35 @@ Example helios.ini:
  master_launch_interval=60
  zero_launch_interval=90
 
- [SearchIndex::LoadTestService]
+ [AnotherService]
  OVERDRIVE=1
  MAX_WORKERS=3
 
 =head2 Helios.ini Parameters for helios.pl
 
+This section just covers the basic config options for helios.pl.  For a 
+complete list of built-in Helios config options, consult the 
+L<Helios::Configuration> man page.
+
 =head3 Configuration options to place in the [global] section:
+
+These options will be the same for all Helios services running a host that 
+share the same collective database, so these options must be placed in a 
+helios.ini section named [global] so they are visible to all running helios.pl 
+instances.
 
 =over 4
 
-=item dsn
+=item dsn [REQUIRED]
 
-Datasource name for the Helios parameter database.  This will also contain the data structures for 
-the underlying TheSchwartz queuing system.
+Datasource name for the Helios parameter database.  This will also contain the 
+data structures for the underlying TheSchwartz queuing system.
 
-=item user
+=item user [REQUIRED]
 
 Database user for the datasource name described above.
 
-=item password
+=item password [REQUIRED]
 
 Database password for the datasource name described above.
 
@@ -168,99 +198,56 @@ a variation on the service class's name.
 
 =head3 Configuration options to place in individual service sections:
 
+The options listed in this section are available to tune helios.pl to work 
+better with your Helios service class and the jobs it wants to service.  These
+are read at startup and, unlike other Helios config options, cannot be 
+dynamically changed while helios.pl is running.  If you wish to tune one of 
+these parameters, reset the parameter and restart the service daemon.
+
 =over 4
 
 =item master_launch_interval
 
-Set the master_launch_interval to determine how long helios.pl should sleep after launching 
-workers before accessing the database to update its configuration parameters and check for waiting 
-jobs.  The default is 1 second which works well for normally short-lived jobs (2 secs or less), 
-but that may be overkill for longer-lived jobs (jobs that run longer than 2 sec).  Setting the 
-master_launch_interval option may help prevent needless database traffic for longer running jobs.
+Set the master_launch_interval to determine how long helios.pl should sleep 
+after launching workers before accessing the database to update its 
+configuration parameters and check for waiting jobs.  The default is 1 second, 
+which should be sufficient for most applications. 
 
 =item zero_launch_interval
 
-Set the zero_launch_interval to determine how long helios.pl should sleep after reaching its 
-MAX_WORKERS limit.  The default is 10 sec.  If jobs are running long enough that 
-helios.pl is frequently hitting is MAX_WORKERS limit (there are waiting jobs but 
-helios.pl can't launch new workers because previously launched jobs are still running), increasing 
-the zero_launch_interval will reduce needless database traffic.
+Set the zero_launch_interval to determine how long helios.pl should sleep after 
+reaching its MAX_WORKERS limit.  The default is 10 sec.  If jobs are running 
+long enough that helios.pl is frequently hitting is MAX_WORKERS limit (there 
+are waiting jobs but helios.pl can't launch new workers because previously 
+launched jobs are still running), increasing the zero_launch_interval will 
+reduce needless database traffic.  
+
+=item zero_sleep_interval
+
+Set the zero_sleep_interval to adjust the amount of time between checks for 
+available jobs in the job queue when the job queue is empty.  If the helios.pl 
+daemon determines there are no available jobs for a service, it sleeps 
+zero_sleep_interval seconds and then checks for jobs again.  The default is 10 
+sec.  If you notice jobs are sitting in the job queue too long before workers 
+are launched to service them, reduce this number to cause jobs to be started 
+faster.  If you have a small number of jobs and do not care if they sit in the 
+job queue for a few seconds before being serviced, increase this number to 
+reduce database queries. 
 
 =back
 
 =head1 HELIOS CTRL PANEL (helios_params_tb)
 
-In addition to helios.ini, certain helios.pl configuration options can be set via the Ctrl Panel 
-in the Helios::Panoptes web interface.  These configuration options are read by helios.pl from the 
-HELIOS_PARAMS_TB table in the Helios database.  Though the Ctrl Panel is designed mostly to 
-provide a standardized interface for service classes to store and retrieve configuration 
-parameters, certain helios.pl control parameters can be set here as well.  
+In addition to helios.ini, certain helios.pl configuration options can be set 
+via the Ctrl Panel or Collective Admin views in the Helios::Panoptes web 
+interface.  These configuration options are read by helios.pl from the 
+HELIOS_PARAMS_TB table in the Helios collective database.  Though the Ctrl Panel
+is designed mostly to provide a standardized interface for your service classes
+to store and retrieve configuration parameters, certain helios.pl control 
+parameters can be set here as well.  
 
-The helios.pl daemon will refresh its configuration parameters from the database after waiting 
-master_launch_interval seconds after launching worker processes.  If MAX_WORKERS
-workers are still running, the helios.pl daemon will wait zero_launch_interval seconds to refresh
-its configuration parameters and try to launch workers again.  If you have long running jobs (jobs 
-that last more than a few seconds), resetting these parameters higher may help smooth processing 
-and reduce needless database traffic.  See the HELIOS OPERATION section below for more 
-information.
-
-=head2 helios.pl Control Parameters in Ctrl Panel
-
-=over 4
-
-=item MAX_WORKERS
-
-The Helios system is designed to run one daemon process for each service class per host.  However, 
-each service daemon can run more than 1 worker process simultaneously.  The upper limit for worker 
-processes is set using the MAX_WORKERS option.  The helios.pl default is 1 worker per 
-server.  You can provide a different default for a particular class by specifying a value in 
-helios.ini.  If active management of available workers is not necessary for a 
-particular service class, this option can be set in helios.ini.
-
-=item OVERDRIVE
-
-Speed up job processing by allowing workers to service jobs until no more are in the queue.  
-Normally, a worker process will service a single job and then exit (1:1 worker/job ratio).  With 
-OVERDRIVE mode enabled, a worker process will keep servicing jobs until it can find no more of 
-that type in the job queue (1:many worker/job ratio).  This may help to speed up processing for 
-short-lived jobs, as once a worker process has started, it will stay in memory, continuing to 
-process jobs until there are no more to process.  This can also enable on-the-fly caching of 
-resources, as once a worker has loaded a resource or established a database connection for a job 
-it can be held for use by subsequent jobs, potentially reducing database load or disk I/O.  Longer 
-running jobs may not benefit as much, however.
-
-Like MAX_WORKERS, if active management of the job processing mode is not necessary, this
-parameter can be set in helios.ini (though that is discouraged).
-
-=item HOLD
-
-If set to 1, a HOLD parameter will cause the helios.pl service daemon to stop launching new workers 
-to process jobs.  Currently processing jobs will be allowed to complete, and those worker 
-processes will end normally.    
-
-Setting HOLD to 0 will allow normal job processing to resume.
-
-=item HALT
-
-If a HALT parameter is defined, the helios.pl service daemon will start process cleanup and will 
-exit.  As with HOLD = 1, jobs currently processing will complete, and the worker processes 
-will exit normally.  
-
-Once a helios.pl daemon has HALTED, there is no way to restart it from the Helios::Pantoptes 
-interface.  It must be restarted from the command line with a 'helios.pl <serviceclass>' command.
-
-As of Helios 2.22, service daemons can also be shut down in the normal *nix manner of using 
-the 'kill' command to send the daemon a SIGTERM signal.
-
-=item WORKER_MAX_TTL
-
-The time in seconds to allow a worker to run.  If you have a problem with 
-workers that get stuck while performing a job (perhaps waiting for a database
-connection, or some other problem), you can set WORKER_MAX_TTL for that service.
-The helios.pl program will check to see if workers for that service are 
-running beyond their intended time-to-live, and kill them if they run too long.
-
-=back
+For more information on these config options, see the L<Helios::Configuration> 
+man page.
 
 =cut
 
@@ -278,23 +265,26 @@ our $HELIOS_INI = $ENV{HELIOS_INI};
 # if the first cmd line switch starts with '-', then all the options are 
 # "proper."  If not, then the first option is the service class, and the 
 # remaining options will be proper.
-our $CLASS;
+our $OPT_CLASS      = '';
 our $OPT_CLEAR_HALT = 0;
+our $OPT_DEBUG      = 0;
 our $OPT_HELP       = 0;
 our $OPT_JOBTYPES   = '';
 our $OPT_VERSION    = 0;
-if ($ARGV[0] !~ /^\-/) {
-	$CLASS = shift @ARGV;
+if ( defined($ARGV[0]) && $ARGV[0] !~ /^\-/) {
+	$OPT_CLASS = shift @ARGV;
 }
 GetOptions(
-	"service=s"  => \$CLASS,
+	"service=s"  => \$OPT_CLASS,
 	"clear-halt" => \$OPT_CLEAR_HALT,
 	"help"       => \$OPT_HELP,
 	"jobtypes=s" => \$OPT_JOBTYPES,
 	"version"    => \$OPT_VERSION,
+	"debug"      => \$OPT_DEBUG,
 );
 $OPT_JOBTYPES =~ s/ //g;	#[]more sanity checking!
 our @ALT_JOBTYPES = split(/,/, $OPT_JOBTYPES);
+$DEBUG_MODE = 1 if $OPT_DEBUG;
 # END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
 # other globals
@@ -344,25 +334,31 @@ our $HELIOS_DB_CONN;					# database handle to help with DBI+forking issues
 
 # print help if asked
 # [LH] [2013-10-04]: New @ARGV parsing for "--help". 
-if ( !defined($CLASS) || $OPT_HELP ) {
+if ( $OPT_HELP ) {
 	require Pod::Usage;
 	Pod::Usage::pod2usage(-verbose => 2, -exitstatus => 0);
 }
 
 # conditionally load module or die in the attempt
-my $worker_class = $CLASS;
+my $worker_class = $OPT_CLASS;
 print "Helios ",$Helios::VERSION,"\n";
 print "helios.pl Service Daemon version $VERSION\n";
 # --version support
 # BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
 # [LH] [2013-10-04]: New @ARGV parsing for "--version".
+# [LH] [2013-10-18]: New @ARGV parsing for --service.
 if ( $OPT_VERSION ) { exit(0); }
-# END CODE Copyright (C) 2013 by Logical Helion, LLC.
-print "Attempting to load $worker_class...\n"; 
-unless ( $worker_class ) {
-	print "You must specify the module name of a Helios service.\n";
+unless ($OPT_CLASS) { 
+	warn("The name of a service class is required.\n");
 	exit(1);
 }
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
+print "Attempting to load $worker_class...\n"; 
+#[]old
+#unless ( $worker_class ) {
+#	print "You must specify the module name of a Helios service.\n";
+#	exit(1);
+#}
 require_module($worker_class);
 
 if ( defined($worker_class->VERSION) ) {
@@ -386,6 +382,7 @@ $worker->setJobType($worker_class);
 if (@ALT_JOBTYPES) {
 	$worker->setAltJobTypes(@ALT_JOBTYPES); 
 	$worker->lookupAltJobtypeids();
+	print "Servicing jobtypes: ", join(' ' => ($worker->getJobType(), $worker->getAltJobTypes())),"\n";
 }
 # END CODE Copyright (C) 2013 by Logical Helion, LLC.
 $worker->debug($DEBUG_MODE);
@@ -439,6 +436,9 @@ if ( defined($params->{WORKER_MAX_TTL_WAIT_INTERVAL}) ) {
 # make a globally accessible database handle 
 # to make it easier to clean up CachedKids after a fork()
 $HELIOS_DB_CONN = $worker->dbConnect();
+# [LH] [2013-10-18]: Added startup message so user knows which collective db
+# we connected to
+print "Connected to collective database: ",$params->{dsn},"\n";
 
 if ($DEBUG_MODE) { 
 	print "MASTER LAUNCH INTERVAL: $MASTER_LAUNCH_INTERVAL\n"; 
@@ -986,12 +986,12 @@ sub terminator {
     my $TERM = 0;
     # did we receive a SIGTERM, or was the HALT config param set?
     if ( defined($params->{HALT}) ) {
-        $worker->logMsg(LOG_NOTICE, "HALTING $CLASS on host ".$worker->getHostname());
+        $worker->logMsg(LOG_NOTICE, "HALTING $OPT_CLASS on host ".$worker->getHostname());
     } else {
         # tell the workers they need exit
         $TERM = 1;
-        $worker->logMsg(LOG_NOTICE, "Received TERM signal; HALTING $CLASS on host ".$worker->getHostname());
-        $worker->logMsg(LOG_NOTICE, "Setting HALT for $CLASS on host ".$worker->getHostname());
+        $worker->logMsg(LOG_NOTICE, "Received TERM signal; HALTING $OPT_CLASS on host ".$worker->getHostname());
+        $worker->logMsg(LOG_NOTICE, "Setting HALT for $OPT_CLASS on host ".$worker->getHostname());
         set_halt();
     }
 
@@ -1000,7 +1000,7 @@ sub terminator {
     sleep $ZERO_LAUNCH_INTERVAL;
     sleep $ZERO_LAUNCH_INTERVAL;
     # reap any processes that ended while we were sleeping
-    $worker->logMsg(LOG_NOTICE, "Reaping $CLASS workers on host ".$worker->getHostname());
+    $worker->logMsg(LOG_NOTICE, "Reaping $OPT_CLASS workers on host ".$worker->getHostname());
     reaper();
     
     # kill any workers still running (they've had plenty of time to end on their own)
@@ -1008,7 +1008,7 @@ sub terminator {
         if ( kill 0 => $pid ) {
             # it's still alive, kill it
             kill 9, $pid;
-            $worker->logMsg(LOG_ERR, "Killed process $pid (shutdown $CLASS instance)");
+            $worker->logMsg(LOG_ERR, "Killed process $pid (shutdown $OPT_CLASS instance)");
         }
         delete $workers{$pid};
     }
@@ -1017,10 +1017,10 @@ sub terminator {
     # only clear the HALT if we received a SIGTERM (we set the halt ourselves)
     if ($TERM) { 
         clear_halt(); 
-        $worker->logMsg(LOG_NOTICE, "Cleared HALT for $CLASS on host ".$worker->getHostname());
+        $worker->logMsg(LOG_NOTICE, "Cleared HALT for $OPT_CLASS on host ".$worker->getHostname());
     }
     clean_shutdown();
-    $worker->logMsg(LOG_NOTICE, "$CLASS on host ".$worker->getHostname().' HALTED.');
+    $worker->logMsg(LOG_NOTICE, "$OPT_CLASS on host ".$worker->getHostname().' HALTED.');
     exit(1);
 }
 
@@ -1184,13 +1184,15 @@ job processing.)
 =cut
 
 sub register {
-	try {
+	# [LH] [2013-10-18]: Replaced try {} block with eval {}.
+	eval {
 		my $dbh = $worker->dbConnect();
 		$dbh->do("DELETE FROM helios_worker_registry_tb WHERE worker_class = ? AND host = ?", undef, 
 					$worker->getJobType(), $worker->getHostname) or die;
 		$dbh->do("INSERT INTO helios_worker_registry_tb (register_time, start_time, worker_class, worker_version, host, process_id) VALUES (?,?,?,?,?,?)", undef,
 					time(), $START_TIME, $worker->getJobType(), $worker->VERSION, $worker->getHostname, $$) or die;
-	} otherwise {
+		1;
+	} or do {
 		throw Helios::Error::DatabaseError($DBI::errstr);
 	};
 	return 1;
@@ -1205,12 +1207,14 @@ It is called whenever there is a clean shutdown.
 =cut
 
 sub unregister {
-	try {
+	# [LH] [2013-10-18]: Replaced try {} block with eval {}.
+	eval {
 		my $dbh = $worker->dbConnect();
 		$dbh->do("DELETE FROM helios_worker_registry_tb WHERE worker_class = ? AND host = ?", undef, 
 					$worker->getJobType(), $worker->getHostname) or die;
 		$dbh->disconnect();
-	} otherwise {
+		1;
+	} or do {
 		throw Helios::Error::DatabaseError($DBI::errstr);
 	};
 	return 1;
@@ -1227,14 +1231,16 @@ when the current job is completed.
 =cut
 
 sub set_halt {
-	try {
+	# [LH] [2013-10-18]: Replaced try {} block with eval {}.
+	eval {
 		if ($DEBUG_MODE) { 
 			print "Attempting to set HALT for ",$worker->getJobType()," on ",$worker->getHostname(),"\n"; 
 		}
 		my $dbh = $worker->dbConnect();
 		$dbh->do("INSERT INTO helios_params_tb (worker_class, host, param, value) VALUES (?,?,?,?)", undef, 
 					$worker->getJobType(), $worker->getHostname, 'HALT', '1');
-	} otherwise {
+		1;
+	} or do {
 		throw Helios::Error::DatabaseError($DBI::errstr);
 	};
 	return 1;	
@@ -1251,14 +1257,16 @@ HALT parameter (where the host is specified as '*').
 =cut
 
 sub clear_halt {
-	try {
+	# [LH] [2013-10-18]: Replaced try {} block with eval {}.
+	eval {
 		if ($DEBUG_MODE) { 
 			print "Attempting to delete HALT for ",$worker->getJobType()," on ",$worker->getHostname(),"\n"; 
 		}
 		my $dbh = $worker->dbConnect();
 		$dbh->do("DELETE FROM helios_params_tb WHERE worker_class = ? AND host = ? AND param = ?", undef, 
 					$worker->getJobType(), $worker->getHostname, 'HALT');
-	} otherwise {
+		1;
+	} or do {
 		throw Helios::Error::DatabaseError($DBI::errstr);
 	};
 	return 1;	
@@ -1371,7 +1379,7 @@ sub workers_to_launch {
 
 =head1 SEE ALSO
 
-L<Helios>, L<Helios::Service>
+L<Helios>, L<Helios::Tutorial>, L<Helios::Service>, L<Helios::Configuration>
 
 =head1 AUTHOR
 

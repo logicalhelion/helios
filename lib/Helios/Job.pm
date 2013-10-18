@@ -6,7 +6,10 @@ use warnings;
 
 use DBI;
 use Error qw(:try);
-use Helios::TheSchwartz;
+#[] use Helios::TheSchwartz;
+# [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
+use Helios::TS;
+use Helios::TS::Job;
 use Helios::ObjectDriver::DBI;
 
 require XML::Simple;
@@ -14,7 +17,7 @@ require XML::Simple;
 use Helios::Error;
 use Helios::JobHistory;
 
-our $VERSION = '2.61';
+our $VERSION = '2.71_4250';
 
 our $D_OD_RETRIES = 3;
 our $D_OD_RETRY_INTERVAL = 5;
@@ -33,6 +36,8 @@ our $D_OD_RETRY_INTERVAL = 5;
 # [LH] [2013-09-07] new(): changed to check to see if TheSchwartz::Job object 
 # to new() has an array in arg(), and throw an exception if it doesn't.
 # (It always should, but [RT79690] is preventing that in a tiny number of cases.) 
+# [LH] [2013-10-18] Replaced calls to Helios::TheSchwartz and TheSchwartz::Job
+# with Helios::TS and Helios::TS::Job.
 
 
 =head1 NAME
@@ -140,7 +145,9 @@ sub new {
 	bless $self, $class;
 
 	# init fields
-	if ( defined($_[0]) && ref($_[0]) && $_[0]->isa('TheSchwartz::Job') ) {
+#[]	if ( defined($_[0]) && ref($_[0]) && $_[0]->isa('TheSchwartz::Job') ) {
+	# [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
+	if ( defined($_[0]) && ref($_[0]) && $_[0]->isa('Helios::TS::Job') ) {
 		$self->job($_[0]);
 # BEGIN CODE COPYRIGHT (C) 2013 LOGICAL HELION, LLC.
 # [LH] [2013-09-07] new(): changed to check to see if TheSchwartz::Job object 
@@ -154,7 +161,9 @@ sub new {
 		}
 # END CODE COPYRIGHT (C) 2013 LOGICAL HELION, LLC.
 	} else {
-		my $schwartz_job = TheSchwartz::Job->new(@_);
+#[]		my $schwartz_job = TheSchwartz::Job->new(@_);
+		# [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
+		my $schwartz_job = Helios::TS::Job->new(@_);
 		$self->job($schwartz_job);
 	}
 
@@ -526,7 +535,9 @@ sub submit {
 
 	my $args = [ $params ];
 
-	my $client = Helios::TheSchwartz->new( databases => $databases, verbose => 1 );
+#[]	my $client = Helios::TheSchwartz->new( databases => $databases, verbose => 1 );
+	# [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
+	my Helios::TS $client = Helios::TS->new( databases => $databases, verbose => 1 );
 	my $sjh = $client->insert($job_class, $args);
 	$self->setJobid($sjh->jobid);
 	return $sjh->jobid;
@@ -632,7 +643,7 @@ __END__
 
 =head1 SEE ALSO
 
-L<Helios>, L<Helios::Service>, L<TheSchwartz::Job>, L<XML::Simple>
+L<Helios::Service>, L<Helios::TS>, L<Helios::TS::Job>, L<XML::Simple>
 
 =head1 AUTHOR
 
@@ -644,6 +655,9 @@ Copyright (C) 2008 by CEB Toolbox, Inc.
 
 Portions of this software, where noted, are
 Copyright (C) 2012 by Andrew Johnson.
+
+Portions of this software, where noted, are
+Copyright (C) 2013 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

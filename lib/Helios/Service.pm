@@ -19,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::JobType;
 use Helios::Error::JobTypeError;
 
-our $VERSION = '2.61_4051';
+our $VERSION = '2.71_4250';
 
 # FILE CHANGE HISTORY:
 # [2011-12-07]: Updated to support new Helios::Logger API.  Added 
@@ -114,8 +114,11 @@ our $VERSION = '2.61_4051';
 # set/getJobType() (set/getFuncid() will be deprecated on final release).  
 # Replaced jobsWaiting() with new version that uses Helios::JobType and scans 
 # for all jobtypes (primary and alternates) if alternate jobtypes are set.
-# [LH] [2013-10-04] Removed 'require XML::Simple' line because Helios::Service 
+# [LH] [2013-10-04]: Removed 'require XML::Simple' line because Helios::Service 
 # has not used that in a long time.
+# [LH] [2013-10-18]: Added grab_for() and JobLockInterval() to implement new 
+# retry API.  Added $CACHED_HOSTNAME and modified prep() to reduce calls to 
+# Sys::Hostname::hostname().  
 
 
 =head1 NAME
@@ -182,6 +185,9 @@ the service is not in OVERDRIVE mode, the worker process will exit.
 our $CACHED_CONFIG;
 our $CACHED_CONFIG_RETRIEVAL_COUNT = 0;
 our $WORKER_START_TIME = 0;
+# [LH] [2013-10-18]: Added $CACHED_HOSTNAME and modified prep() to reduce calls to 
+# Sys::Hostname::hostname().  
+our $CACHED_HOSTNAME = '';
 
 our %INIT_LOG_CLASSES;	# for the logging system
 our $INIT_CONFIG_CLASS; # for config system
@@ -561,9 +567,22 @@ sub prep {
 	}
 
 	# pull other parameters from environment
-	# only bother to set hostname if it isn't already set	
-	unless ( defined($self->getHostname()) ) {
-		$self->setHostname(hostname);
+
+# END CODE Copyright (C) 2012 by Andrew Johnson.
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+	# If hostname value is not set,
+	# 1) use the cached value if we have one, or 
+	# 2) go ahead and call hostname() (and cache it for later)
+	if ( !defined($self->getHostname()) ) {
+	# [LH] [2013-10-18] Changed hostname handling to reduce hostname lookups.
+		if ( $CACHED_HOSTNAME ) {
+			$self->setHostname($CACHED_HOSTNAME);
+		} else {
+			$CACHED_HOSTNAME = hostname();
+			$self->setHostname($CACHED_HOSTNAME);
+		}
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.		
+# BEGIN CODE Copyright (C) 2012 by Andrew Johnson.
 	}
 	
 	if ( defined($ENV{HELIOS_DEBUG}) ) {
@@ -1560,6 +1579,14 @@ sub new {
 	return $self;
 }
 
+
+# [LH] [2013-10-18]: Added grab_for() and JobLockInterval() to implement new 
+# retry API.  Like TheSchwartz's setup, the JobLockInterval() defaults to 
+# 3600 sec (1 hr).
+sub grab_for { $_[0]->JobLockInterval() || 3600 }
+sub JobLockInterval { undef }
+
+#[] document all the new stuff before release!
 
 # END CODE Copyright (C) 2013 by Logical Helion, LLC.
 

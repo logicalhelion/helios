@@ -1,4 +1,35 @@
 Revision history for Perl extension Helios.
+2.71_4250  Fri Oct 18 16:21:46 2013
+	- Helios::Config:
+	  - NEW set/get/unsetParam() methods to more easily work 
+	    with individual config parameters in the HELIOS_PARAMS_TB
+	    table.
+	  - NEW helios_config_*.pl commands to make Helios config params 
+	    more accessible to shell scripts and other utilities.
+	  - parseConfDb(): combined the 2 separate database queries
+	    into 1 to reduce database calls when config is updated.
+	  - separated Helios config parameter documentation into
+	    Helios::Configuration POD.
+ 	- Helios::Service:
+	  - Added JobLockInterval() functionality to control the 
+	    amount of time jobs are locked from a Helios API.  Previously,
+	    the only way to control the amount of time jobs were locked 
+	    was to override TheSchwartz::Worker's grab_for() method.
+	  - Changed hostname lookup handling to reduce the number of calls
+	    to Sys::Hostname::hostname().  
+	- helios.pl:
+	  - Changed cmd line option handling so --help and --version work
+	    again.
+	  - Added startup message to report the dsn of the collective
+	    database helios.pl is connected to.
+	  - Replaced most Error module-based try {} blocks with eval {}
+	  - Updated POD with new cmd options and referenced 
+	    Helios::Configuration.
+	- Helios::Job - replaced usage of Helios::TheSchwartz with the 
+	  new Helios::TS class.
+	- Helios::JobType - added debug() accessor method. 
+	- Makefile.PL:  Added all helios_config_*.pl commands above and
+	  helios_jobtype_add.pl to EXE_FILES.  Removed old LICENSE line.
 2.71_4051  Fri Oct  4 23:24:16 2013
 	- Added code for "virtual jobtypes" - jobtypes w/o a service 
 	  class.  Allows a service to handle jobs of multiple jobtypes 
