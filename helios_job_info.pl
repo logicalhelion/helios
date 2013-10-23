@@ -1,0 +1,175 @@
+#!/usr/bin/env perl
+
+use 5.008;
+use strict;
+use warnings;
+use Getopt::Long;
+
+use Helios::Service;
+use Helios::ObjectDriver;
+use Helios::JobHistory;
+use Helios::TS::Job;
+use Helios::JobType;
+
+our $VERSION = '0.00_0000';
+
+our $OPT_JOBID = '';
+our $OPT_ARGS  = 0;
+our $OPT_LOGS  = 0;
+our $OPT_HELP  = 0;
+our @LOG_PRIORITIES = qw(EMERG ALERT CRIT ERR WARNING NOTICE INFO DEBUG);
+
+GetOptions(
+	"jobid=s" => \$OPT_JOBID,
+	"args"    => \$OPT_ARGS,
+	"logs"    => \$OPT_LOGS,
+	"help"    => \$OPT_HELP,
+);
+
+# help mode
+if ($OPT_HELP) {
+	require Pod::Usage;
+	Pod::Usage::pod2usage(-verbose => 2, -exitstatus => 0);
+}
+
+unless ($OPT_JOBID) {
+	warn "$0: A jobid is required.\n";
+	exit(1);
+}
+
+my $drvr;
+my $itr;
+my $obj;
+my $service;
+my @rs;
+my $dbh;
+
+eval {
+	$service = Helios::Service->new();
+	$service->prep();
+	$dbh = $service->dbConnect();
+	
+	my $sql = q{
+		SELECT
+			jobid,
+			funcid,
+			insert_time,
+			complete_time,
+			exitstatus,
+			arg
+		FROM 
+			helios_job_history_tb
+		WHERE
+			jobid = ?
+		ORDER BY complete_time DESC
+	};
+
+	@rs = @{ $dbh->selectall_arrayref($sql, undef, $OPT_JOBID) };
+
+	1;
+} or do {
+	my $E = $@;
+	warn "$0: ERROR: $E\n";
+	exit(1);	
+};
+
+if ( @rs ) {
+	my $jt = Helios::JobType->lookup(jobtypeid => $rs[0]->[1]);
+	print "Jobid: ", $rs[0]->[0],"\n";
+	print "Jobtype: ", $jt->getName(),"\n";
+	print "Submit Time: ", scalar localtime($rs[0]->[2]),"\n";
+	print "Complete Time: ", scalar localtime($rs[0]->[3]),"\n";
+	print "Exitstatus: ", $rs[0]->[4],"\n";
+	print "\n";
+	if ($OPT_ARGS) {
+		print "Args: \n";
+		print $rs[0]->[5],"\n\n";
+	}
+} else {
+	eval {
+		$drvr = Helios::ObjectDriver->getDriver();
+		$itr = $drvr->search('Helios::TS::Job' => 
+			{ jobid => $OPT_JOBID }
+		);
+		$obj = $itr->next();
+
+		1;
+	} or do {
+		my $E = $@;
+		warn "$0: ERROR: $E\n";
+		exit(1);	
+	};
+	if ($obj) {
+		my $jt = Helios::JobType->lookup(jobtypeid => $obj->funcid);
+		print "Jobid: ", $obj->jobid,"\n";
+		print "Jobtype: ", $jt->getName(),"\n";
+		print "Submit Time: ", scalar localtime($obj->insert_time),"\n";
+		print "Run After: ", scalar localtime($obj->run_after),"\n";
+		print "Locked Until: ";
+		print scalar localtime($obj->grabbed_until) if $obj->grabbed_until();
+		print "\n";
+		print "Priority: ";
+		print $obj->priority if $obj->priority;
+		print "\n";
+		print "\n";
+		if ($OPT_ARGS) {
+			print "Args: \n";
+			print $obj->arg()->[0],"\n\n";
+		}
+	}
+}
+
+
+if ($OPT_LOGS) {
+	eval {
+		my $sql = q{
+			SELECT 
+				log_time,
+				host,
+				process_id,
+				priority,
+				message
+			FROM
+				helios_log_tb
+			WHERE
+				jobid = ?
+			ORDER BY log_time
+		};
+		@rs = @{ $dbh->selectall_arrayref($sql, undef, $OPT_JOBID) };
+		1;
+	} or do {
+		my $E = $@;
+		warn "$0: ERROR: $E\n";
+		exit(1);			
+	};
+	
+	if ( @rs ) {
+		print "Logs:\n";
+		foreach (@rs) {
+			print scalar localtime($_->[0]),' [',$_->[1],':',$_->[2],'] ',
+				$LOG_PRIORITIES[$_->[3]],' ',$_->[4],"\n";
+		}
+	}
+	
+}
+
+exit(0);
+
+
+=head1 AUTHOR
+
+Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2013 by Logical Helion, LLC.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.0 or,
+at your option, any later version of Perl 5 you may have available.
+
+=head1 WARRANTY
+
+This software comes with no warranty of any kind.
+
+=cut
