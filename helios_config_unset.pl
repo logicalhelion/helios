@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.71_4250';
+our $VERSION = '2.71_4350';
 
 our $Service_Name;
 our $Param_Name;
@@ -78,3 +78,48 @@ if ( defined($Value) ) {
 
 exit(0);
 
+
+=head1 NAME
+
+helios_config_unset.pl - delete a config param's value from the Helios database
+
+=head1 SYNOPSIS
+
+ helios_config_unset.pl --service=<service name> --param=<param name> [--hostname=<hostname>]
+   
+ # delete the "endpoint_url" param for MyService on all hosts
+ helios_config_unset.pl --service=MyService --hostname=* --param=endpoint_url
+    
+ # delete the "port" param for MyService on the current host
+ helios_config_unset.pl --service=MyService --param=port
+
+=head1 DESCRIPTION
+
+The helios_config_unset.pl command can be used to delete configuration 
+parameters for a service from the Helios collective database.  This allows 
+Helios configuration parameters to be deleted from the command line 
+or shell scripts. 
+
+If the --hostname parameter is not specifed, helios_config_unset.pl will default 
+to the current host.  If you want a parameter to be removed for a service 
+across an entire collective, set the --hostname parameter to '*'.  WARNING:  
+Be careful with deleting parameters with --hostname=* as you will deleting the 
+parameter for every service instance in the entire collective! 
+
+=head1 AUTHOR
+
+Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2013 by Logical Helion, LLC.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.0 or,
+at your option, any later version of Perl 5 you may have available.
+
+=head1 WARRANTY
+
+This software comes with no warranty of any kind.
+
+=cut

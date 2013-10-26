@@ -12,7 +12,7 @@ use Helios::ObjectDriver::DBI;
 use Helios::ConfigParam;
 use Helios::Error::ConfigError;
 
-our $VERSION = '2.71_4250';
+our $VERSION = '2.71_4350';
 
 =head1 NAME
 
@@ -600,7 +600,12 @@ sub parseConfDb {
 
 sub getParam {
 	my $self = shift;
-	my %params = @_;
+	my %params;
+	if (scalar @_ == 1) {
+		$params{param} = $_[0];
+	} else {
+		%params = @_;		
+	}
 	my $service_name = defined($params{service_name}) ? $params{service_name} : $self->getServiceName;
 	my $param_name   = $params{param};
 	my $host         = defined($params{hostname}) ? $params{hostname} : $self->getHostname();
@@ -608,7 +613,9 @@ sub getParam {
 
 	# shortcut: if the current config hash has already been retrieved
 	# and the requested param is set, return *that* param
-	if ($self->getConfig() && ($self->getServiceName eq $service_name) && defined($self->getConfig()->{$param_name}) ) {
+	if ( defined($self->getConfig()) && defined($self->getServiceName) &&
+		($self->getServiceName eq $service_name) && 
+		defined($self->getConfig()->{$param_name}) ) {
 		return $self->getConfig()->{$param_name};
 	}
 

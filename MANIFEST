@@ -18,9 +18,12 @@ helios_config_get.pl
 helios_config_import.pl
 helios_config_set.pl
 helios_config_unset.pl
+helios_job_info.pl
+helios_job_status.pl
 helios_job_submit.pl
 helios_jobtype_add.pl
 helios_log_clean.pl
+helios_service_status.pl
 INSTALL
 INSTALL.redhat
 INSTALL.ubuntu

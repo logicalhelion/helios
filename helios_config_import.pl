@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::ObjectDriver::DBI;	#[] change to H::OD later
 
-our $VERSION = '2.71_4250';
+our $VERSION = '2.71_4350';
 
 our $Debug = 0;
 our $Help_Mode = 0;
@@ -94,3 +94,41 @@ print $imp_cnt," config parameters imported to Helios collective database.\n";
 
 exit(0);
 
+
+=head1 NAME
+
+helios_config_import.pl - import a INI-style config file into the Helios database
+
+=head1 SYNOPSIS
+
+ # contents of myservice.ini file
+ [MyService]
+ endpoint_url=http://webserver/app.pl
+ landing_zone=/mnt/documents/upload/
+ email_notification=off 
+
+ # command to import config parameters in myservice.ini into the Helios database
+ helios_config_import.pl --file=myservice.ini
+
+=head1 DESCRIPTION
+
+#[] still missing
+
+
+=head1 AUTHOR
+
+Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2013 by Logical Helion, LLC.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.0 or,
+at your option, any later version of Perl 5 you may have available.
+
+=head1 WARRANTY
+
+This software comes with no warranty of any kind.
+
+=cut

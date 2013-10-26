@@ -1,4 +1,10 @@
 Revision history for Perl extension Helios.
+2.71_4350  Fri Oct 25 23:23:29 2013
+	- NEW helios_service_status.pl - report service status.
+	- NEW helios_job_status.pl - report job exitstatus (if completed).
+	- NEW helios_job_info.pl - report job metainfo, args, and log msgs.
+	- helios_config_*.pl:  added documentation.
+	- Helios::Config - fixed warning using getParam().
 2.71_4250  Fri Oct 18 16:21:46 2013
 	- Helios::Config:
 	  - NEW set/get/unsetParam() methods to more easily work 

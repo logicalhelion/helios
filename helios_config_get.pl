@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.71_4250';
+our $VERSION = '2.71_4350';
 
 our $Service_Name;
 our $Param_Name;
@@ -78,3 +78,38 @@ if ( defined($Value) ) {
 
 exit(0);
 
+
+=head1 NAME
+
+helios_config_get.pl - get a config parameter's value from the Helios collective database
+
+=head1 SYNOPSIS
+
+ helios_config_get.pl --service=<service name> [--hostname=<hostname>] --param=<param name>
+
+ # get the value of the "endpoint_url" param for MyService on the current host
+ helios_config_get.pl --service=MyService --param=endpoint_url
+
+=head1 DESCRIPTION
+
+The helios_config_get.pl command can be used to retrieve configuration 
+parameters for a service from the Helios collective database.  This allows 
+Helios configuration parameters to be accessed via shell scripts.
+
+=head1 AUTHOR
+
+Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2013 by Logical Helion, LLC.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.0 or,
+at your option, any later version of Perl 5 you may have available.
+
+=head1 WARRANTY
+
+This software comes with no warranty of any kind.
+
+=cut
