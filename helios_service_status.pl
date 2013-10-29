@@ -8,7 +8,7 @@ use Sys::Hostname;
 
 use Helios::Service;
 
-our $VERSION = '2.71_4350';
+our $VERSION = '2.71_43500000';
 
 our $Service_Name = '';
 our $Hostname     = '';
@@ -71,8 +71,12 @@ eval {
 };
 
 foreach (@$rs) {
-	print 'Service: ',$_->[0],' ',$_->[1],'  Host: ',$_->[2],'  PID: ',$_->[3],"\n";
-	print "  Online Since: ",scalar localtime($_->[4]),'  Last Registered: ',scalar localtime($_->[5]),"\n";
+	print 'Service: ',$_->[0],' ',$_->[1],"\n";
+	print 'Host: ',$_->[2],"\n";
+	print 'PID: ',$_->[3],"\n";
+	print "Online Since: ",scalar localtime($_->[4]),"\n";
+	print 'Last Registered: ',scalar localtime($_->[5]),"\n";
+	print "\n";
 }
 
 $dbh->disconnect();

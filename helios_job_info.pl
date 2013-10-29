@@ -11,7 +11,7 @@ use Helios::JobHistory;
 use Helios::TS::Job;
 use Helios::JobType;
 
-our $VERSION = '2.71_4350';
+our $VERSION = '2.71_43500000';
 
 our $OPT_JOBID = '';
 our $OPT_ARGS  = 0;
@@ -149,6 +149,7 @@ if ($OPT_LOGS) {
 			print scalar localtime($_->[0]),' [',$_->[1],':',$_->[2],'] ',
 				$LOG_PRIORITIES[$_->[3]],' ',$_->[4],"\n";
 		}
+		print "\n";
 	}
 	
 }

@@ -17,7 +17,7 @@ require XML::Simple;
 use Helios::Error;
 use Helios::JobHistory;
 
-our $VERSION = '2.71_4250';
+our $VERSION = '2.71_42500000';
 
 our $D_OD_RETRIES = 3;
 our $D_OD_RETRY_INTERVAL = 5;
@@ -38,7 +38,10 @@ our $D_OD_RETRY_INTERVAL = 5;
 # (It always should, but [RT79690] is preventing that in a tiny number of cases.) 
 # [LH] [2013-10-18] Replaced calls to Helios::TheSchwartz and TheSchwartz::Job
 # with Helios::TS and Helios::TS::Job.
-
+# [LH] [2013-10-28] Added set/getArgString(), set/getJobType(), 
+# set/getJobtypeid() methods; set/getArgXML(), set/getFuncname(), 
+# set/getFuncid() will be deprecated in Helios 3.x.  Changed POD to document 
+# the new functions.  
 
 =head1 NAME
 
@@ -55,18 +58,18 @@ jobs in the Helios system.
 These accessors allow access to information about an instantiated Helios::Job 
 object:
 
- debug()          whether Debug Mode is enabled or not
- get/setConfig()  Helios configuration passed by the system to the job object
- get/setArgs()    hashref of the job's arguments (interpreted from the arg XML)
- get/setArgXML()  the raw XML of the job arguments
+ debug()             whether Debug Mode is enabled or not
+ get/setConfig()     Helios configuration passed by the system to the job object
+ get/setArgs()       hashref of the job's arguments (interpreted from the arg string)
+ get/setArgString()  the raw XML of the job arguments
 
 Several accessors are pass-through accessors to access values in the 
 underlying TheSchwartz::Job object
  
  get/setJobid()         jobid of the job in the job queue
  get/setFailures()      number of previous failures of the job before current run
- get/setFuncid()        funcid value of the job (maps to funcname in Helios db)
- get/setFuncname()      funcname value of the job (maps to funcid in Helios db)
+ get/setJobtypeid()     jobtypeid value of the job 
+ get/setJobType()       jobtype name of the job
  get/setUniqkey()       uniqkey value of the job (see TheSchwartz documentation)
  get/setRunAfter()      current run_after value of the job
  get/setGrabbedUntil()  current grabbed_until value of the job
@@ -129,6 +132,17 @@ sub job { my $self = shift; @_ ? $self->{job} = shift : $self->{job}; }
 
 sub setArgXML { $_[0]->{argxml} = $_[1]; }
 sub getArgXML { return $_[0]->{argxml}; }
+
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+sub setArgString { setArgXML(@_) }
+sub getArgString { getArgXML(@_) }
+
+sub setJobType { setFuncname(@_) }
+sub getJobType { getFuncname(@_) }
+
+sub setJobtypeid { setFuncid(@_) }
+sub getJobtypeid { getFuncid(@_) }
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
 
 =head1 METHODS
@@ -453,8 +467,8 @@ error if it fails.
 Before a job can be successfully submitted, the following must be set first:
 
  $job->setConfig($configHash);
- $job->setArgXML($xmlstring);
- $job->setFuncname($servicename);
+ $job->setArgString($xmlstring);
+ $job->setJobType($servicename);
 
 So, for example, to submit a Helios::TestService to the Helios system, you need 
 to do the following:
@@ -474,8 +488,8 @@ to do the following:
  # once you have the config, you can set up the Helios::Job
  my $job = Helios::Job->new();
  $job->setConfig($config);
- $job->setFuncname('Helios::TestService');
- $job->setArgXML();
+ $job->setJobType('Helios::TestService');
+ $job->setArgString($jobxml);
  
  # then submit the job (this will throw an exception if something goes wrong)
  my $jobid = $job->submit();
@@ -486,6 +500,8 @@ if they encounter errors, so a safer example would catch them:
 
  use Helios::Service;
  use Helios::Job;
+
+ my $jobxml = "<job><params><string1>This is a test</string1/params>/job>";
 
  my $srv = Helios::Service->new();
  eval {
@@ -501,8 +517,8 @@ if they encounter errors, so a safer example would catch them:
  # once you have the config, you can set up the Helios::Job
  my $job = Helios::Job->new();
  $job->setConfig($config);
- $job->setFuncname('Helios::TestService');
- $job->setArgXML();
+ $job->setJobType('Helios::TestService');
+ $job->setArgString($jobxml);
  
  # then submit the job (this will throw an exception if something goes wrong)
  my $jobid;

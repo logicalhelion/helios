@@ -1,18 +1,19 @@
 #!/usr/bin/perl
 
+use 5.008;
 use strict;
 use warnings;
 
-use Error qw(:try);
-
 use Helios::Job;
-use Helios::Service;
+use Helios::Config;
 
-our $VERSION = '2.61';
+our $VERSION = '2.71_0000';
 
 # CHANGES:
 # 2012-01-22: Minor changes to comments.
 # [LH] 2013-08-04: Changed service instantiation to use new Helios::Config API.
+# [LH] [2013-10-28]: Updated to use Helios::Config and new Helios::Job API.  
+# Replaced all try {} with eval {}.  Added --verbose option to return jobid.
 
 =head1 NAME
 
@@ -20,11 +21,11 @@ helios_job_submit.pl - Submit a job to the Helios job processing system from the
 
 =head1 SYNOPSIS
 
-helios_job_submit.pl [--no-validate] I<jobclass> [I<jobargs>]
+ helios_job_submit.pl [--jobid] [--no-validate] I<jobclass> [I<jobargs>]
 
-helios_job_submit.pl IndexService "<job>params><id>699</id></params></job>"
+ helios_job_submit.pl MyService "<job>params><myarg1>myvalue1</myarg1></params></job>"
 
-helios_job_submit.pl --help
+ helios_job_submit.pl --help
 
 =head1 DESCRIPTION
 
@@ -41,10 +42,23 @@ if (defined($ENV{HELIOS_DEBUG}) && $ENV{HELIOS_DEBUG} == 1) {
 }
 
 our $VALIDATE = 1;
-if ( lc($ARGV[0]) eq '--no-validate') {
-	shift @ARGV;
-	$VALIDATE = 0;
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+# [LH] [2013-10-28]: Added --verbose option.
+our $OPT_VERBOSE = 0;
+our @OPTS = @ARGV;
+foreach (@OPTS) {
+	last if !/^--/;
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
+	if ( lc($_) eq '--no-validate') {
+		shift @ARGV;
+		$VALIDATE = 0;
+	}
+	if ( lc($_) eq '--verbose' ) {
+		shift @ARGV;
+		$OPT_VERBOSE = 1;
+	}	
 }
+
 our $JOB_CLASS = shift @ARGV;
 our $PARAMS = shift @ARGV;
 
@@ -57,6 +71,8 @@ if ( !defined($JOB_CLASS) || ($JOB_CLASS eq '--help') || ($JOB_CLASS eq '-h') ) 
 	Pod::Usage::pod2usage(-verbose => 2, -exitstatus => 0);
 }
 
+=old
+#[]
 # instantiate the base worker class just to get the [global] INI params
 # (we need to know where the Helios db is)
 my $WORKER = new Helios::Service;
@@ -64,6 +80,11 @@ my $WORKER = new Helios::Service;
 $WORKER->prep();
 my $config = $WORKER->getConfig();
 # END [LH] 2013-08-04
+=cut
+
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+my $config = Helios::Config->parseConfig();
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
 # if we were passed a <params> wodge of XML on the command line, 
 # try to validate it
@@ -80,16 +101,31 @@ if ( !defined($PARAMS) ) {
 # test the args before we submit
 if ($VALIDATE) { validateParamsXML($PARAMS) or exit(1); }
 
+=old
+#[]
 # create a Helios::Job object and submit it
 my $hjob = Helios::Job->new();
 $hjob->setConfig($config);
 $hjob->setFuncname($JOB_CLASS);
 $hjob->setArgXML($PARAMS);
 my $jobid = $hjob->submit();
+=cut
+
+my $j = Helios::Job->new();
+$j->setConfig($config);
+$j->setJobType($JOB_CLASS);
+$j->setArgString($PARAMS);
+my $jobid = $j->submit();
 
 if ($DEBUG_MODE) {
 	print "Job submit successful.  JOBID: ",$jobid,"\n";
 }
+
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+if ($OPT_VERBOSE && !$DEBUG_MODE) {
+	print "Jobid: $jobid\n";
+}
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
 
 =head1 SUBROUTINES
@@ -104,20 +140,35 @@ if it isn't.
 
 sub validateParamsXML {
 	my $arg = shift;
-	try {
-		my $arg = Helios::Job->parseArgXML($arg);
-		return 1;
-	} catch Helios::Error::InvalidArg with {
-		my $e = shift;
-		print STDERR "Invalid job arguments: $arg (",$e->text(),")\n";
-		return undef;
+=old
+#[]
+#	try {
+#		my $arg = Helios::Job->parseArgXML($arg);
+#		return 1;
+#	} catch Helios::Error::InvalidArg with {
+#		my $e = shift;
+#		print STDERR "Invalid job arguments: $arg (",$e->text(),")\n";
+#		return undef;
+#	};
+=cut
+	
+	# [LH] [2013-10-28]: Replaced all try {} with eval {}	
+	my $valid = 0;
+	eval {
+		$arg = Helios::Job->parseArgXML($arg);
+		$valid = 1;
+		1;
+	} or do {
+		my $E = $@;
+		warn("Invalid job arguments: $arg (", $E->text(),")\n");
 	};
+
 }
 
 
 =head1 SEE ALSO
 
-L<Helios>, L<helios.pl>, L<Helios::Service>, L<Helios::Job>
+L<Helios>, L<Helios::Job>
 
 =head1 AUTHOR
 
@@ -126,6 +177,9 @@ Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
 =head1 COPYRIGHT AND LICENSE
 
 Copyright (C) 2008-9 by CEB Toolbox, Inc.
+
+Portions of this software, where noted, are Copyright (C) 2013 by
+Logical Helion, LLC.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,
