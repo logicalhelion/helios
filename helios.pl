@@ -21,7 +21,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TS;
 use Helios::Config;
 
-our $VERSION = '2.71_4250';
+our $VERSION = '2.71_42500000';
 
 # FILE CHANGE HISTORY
 # [2012-01-08]: Added a check to try to prevent loading code outside of @INC.
@@ -80,6 +80,10 @@ our $VERSION = '2.71_4250';
 # Added startup message so user knows which collective db the daemon connected 
 # to.  Partially updated POD with new options and mentioned new 
 # Helios::Configuration POD; also added mention of zero_sleep_interval option.
+# [LH] [2013-10-28] Removed last try {} around the main loop.  Database
+# reconnect code now dumps all cached database connections before attempting 
+# a reconnect. 
+
 
 =head1 NAME
 
@@ -132,6 +136,22 @@ parameter specified in the Helios configuration for the specified service on the
 current host.  This is helpful if you shutdown your Helios service daemon using 
 the Helios::Panoptes Collective Admin view.  Note that it will NOT remove a HALT
 specified globally (where host = '*').
+
+=head1 COMMAND LINE OPTIONS
+
+#[] more docs!
+
+=over 4
+
+=item --service
+
+=item --jobtypes
+
+=item --clear-halt
+
+
+
+=back
 
 =head1 HELIOS.INI
 
@@ -548,7 +568,7 @@ Sleep master_launch_interval seconds and start the operation loop again.
 =cut
 
 MAIN_LOOP:{
-	try {
+	eval {
 	
 		# while not halted
 		while (!defined($params->{HALT}) ) {
@@ -696,9 +716,9 @@ MAIN_LOOP:{
 					sleep $MASTER_LAUNCH_INTERVAL;
 				}
 		}
-		
-	} otherwise {
-		my $e = shift;
+		1;
+	} or do {
+		my $e = $@;
 		# if we're a worker process and we ended up here
 		# it's a fluke caused by the database instability
 		# we have to bail out and hope the service daemon survives
@@ -708,13 +728,22 @@ MAIN_LOOP:{
 			print "EXCEPTION THROWN: ",$e->text,"\n"; 
 			print "ATTEMPTING TO RECONNECT...\n";
 		}
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+		#[] dump all the database connections
+		# [LH] [2013-10-28]: Dump all the cached db connections so we can make
+		# sure we're starting over.
+		my $ck = $HELIOS_DB_CONN->{Driver}->{CachedKids};
+		%$ck = ();
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
+
 		my $retry;
 		my $return_code = 0;
 		for($retry = 1; $retry <= $SAFE_MODE_RETRIES; $retry++) {
 			my $success = 0;
-			try {
+			eval {
 				$success = $worker->dbConnect();
-			} otherwise {
+				1;
+			} or do {
 				# actually, if we fail, we do nothing
 			};
 			if ($success) {
@@ -729,6 +758,11 @@ MAIN_LOOP:{
 			print "DATABASE RECONNECTION ATTEMPTS FAILED!\n";
 		}
 		if ($return_code) {
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+			# [LH] [2013-10-28]: Reconnect the main db connection variable before
+			# we go back to the main loop.
+			$HELIOS_DB_CONN = $worker->dbConnect();
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 			$worker->logMsg(LOG_CRIT, "Exiting SAFE MODE; Reestablished connection to database after exception: ".$e->text);
 			$worker->errstr(undef);
 			redo MAIN_LOOP;
