@@ -19,6 +19,11 @@ our $OPT_LOGS  = 0;
 our $OPT_HELP  = 0;
 our @LOG_PRIORITIES = qw(EMERG ALERT CRIT ERR WARNING NOTICE INFO DEBUG);
 
+# 1st arg is jobid if it doesn't start with -
+if ($ARGV[0] !~ /^-/) {
+	$OPT_JOBID = shift @ARGV;
+}
+
 GetOptions(
 	"jobid=s" => \$OPT_JOBID,
 	"args"    => \$OPT_ARGS,

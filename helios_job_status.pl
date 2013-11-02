@@ -7,7 +7,7 @@ use Getopt::Long;
 
 use Helios::Service;
 
-our $VERSION = '2.71_4350';
+our $VERSION = '2.71_43500000';
 
 our $Args;
 our @JobHistory;
@@ -15,6 +15,11 @@ our @Logs;
 
 our $OPT_JOBID = '';
 our $OPT_HELP    = 0;
+
+# 1st arg is jobid if it doesn't start with -
+if ($ARGV[0] !~ /^-/) {
+	$OPT_JOBID = shift @ARGV;
+}
 
 GetOptions(
 	"jobid=s" => \$OPT_JOBID,

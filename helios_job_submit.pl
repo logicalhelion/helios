@@ -14,6 +14,8 @@ our $VERSION = '2.71_0000';
 # [LH] 2013-08-04: Changed service instantiation to use new Helios::Config API.
 # [LH] [2013-10-28]: Updated to use Helios::Config and new Helios::Job API.  
 # Replaced all try {} with eval {}.  Added --verbose option to return jobid.
+# [LH] [2013-11-01]: changed cmd line arg parsing so -v and -n work as well as
+# --verbose and --no-validate
 
 =head1 NAME
 
@@ -47,13 +49,13 @@ our $VALIDATE = 1;
 our $OPT_VERBOSE = 0;
 our @OPTS = @ARGV;
 foreach (@OPTS) {
-	last if !/^--/;
+	last if !/^-/;
 # END CODE Copyright (C) 2013 by Logical Helion, LLC.
-	if ( lc($_) eq '--no-validate') {
+	if ( lc($_) eq '--no-validate' || lc($_) eq '-n') {
 		shift @ARGV;
 		$VALIDATE = 0;
 	}
-	if ( lc($_) eq '--verbose' ) {
+	if ( lc($_) eq '--verbose' || lc($_ eq '-v')) {
 		shift @ARGV;
 		$OPT_VERBOSE = 1;
 	}	
