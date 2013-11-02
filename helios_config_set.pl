@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.71_4350';
+our $VERSION = '2.71_4460';
 
 our $Service_Name;
 our $Param_Name;
@@ -41,7 +41,7 @@ if ($Help_Mode) {
 }
 
 # stop if we were not given at least service and param
-unless ($Service_Name && $Param_Name && $Host && $Value) {
+unless ($Service_Name && $Param_Name && $Host && defined($Value)) {
 	warn "$0: A service name, config parameter name, and value are required.\n";
 	exit(1);
 }

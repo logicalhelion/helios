@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.71_4350';
+our $VERSION = '2.71_4460';
 
 our $Service_Name;
 our $Param_Name;
@@ -47,7 +47,7 @@ unless ($Service_Name && $Param_Name) {
 
 # parse the global config; we'll need it
 eval {
-	$Config = Helios::Config->parseConfig();
+	$Config = Helios::Config->parseConfig(service => $Service_Name);
 	1;	
 } or do {
 	my $E = $@;

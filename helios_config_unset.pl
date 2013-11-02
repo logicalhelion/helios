@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.71_4350';
+our $VERSION = '2.71_4460';
 
 our $Service_Name;
 our $Param_Name;
@@ -73,7 +73,7 @@ eval {
 # if we found the param, print its value
 # if not, we print nothing
 if ( defined($Value) ) {
-	print STDOUT "SERVICE: $Service_Name HOST: $Host PARAM: $Param_Name CLEARED.\n";
+	print STDOUT "Service: $Service_Name Hostname: $Host Param: $Param_Name CLEARED.\n";
 }
 
 exit(0);
