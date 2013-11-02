@@ -80,10 +80,10 @@ our $VERSION = '2.71_42500000';
 # Added startup message so user knows which collective db the daemon connected 
 # to.  Partially updated POD with new options and mentioned new 
 # Helios::Configuration POD; also added mention of zero_sleep_interval option.
-# [LH] [2013-10-28] Removed last try {} around the main loop.  Database
+# [LH] [2013-10-28]: Removed last try {} around the main loop.  Database
 # reconnect code now dumps all cached database connections before attempting 
 # a reconnect. 
-
+# [LH] [2013-11-02]: Further adjustments to handling lost database connections.
 
 =head1 NAME
 
@@ -734,6 +734,7 @@ MAIN_LOOP:{
 		# sure we're starting over.
 		my $ck = $HELIOS_DB_CONN->{Driver}->{CachedKids};
 		%$ck = ();
+		$HELIOS_DB_CONN->disconnect() if ( ref($HELIOS_DB_CONN) && $HELIOS_DB_CONN->isa('DBI'));
 # END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
 		my $retry;
