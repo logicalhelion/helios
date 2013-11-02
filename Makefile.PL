@@ -21,7 +21,8 @@ WriteMakefile(
     EXE_FILES         => [ 'helios.pl', 'helios_job_submit.pl', 'helios_log_clean.pl',
                            'helios_jobtype_add.pl', 'helios_config_get.pl',
                            'helios_config_set.pl', 'helios_config_unset.pl',
-                           'helios_config_import.pl',
+                           'helios_config_import.pl', 'helios_service_status.pl',
+                           'helios_job_info.pl', 'helios_job_status.pl',
                          ],
     INST_SCRIPT       => 'bin',
     (ExtUtils::MakeMaker->VERSION >= 6.46 ? 
@@ -51,4 +52,5 @@ WriteMakefile(
 # version.
 # [LH] [2013-10-16]: Removed old LICENSE line.  Added helios_config_* and 
 # helios_jobtype_add.pl to EXE_FILES.
-
+# [LH] [2013-10-25]: Added new helios_job_*.pl and helios_service_status.pl to 
+# EXE_FILES.

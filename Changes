@@ -1,4 +1,19 @@
 Revision history for Perl extension Helios.
+2.71_4460  Sat Nov  2 13:36:52 2013
+	Minor changes and fixes to new commands:
+	- helios_config_get.pl: fixed problem with not returning param 
+	  values set in helios.ini.
+	- helios_config_set.pl: fixed problem with setting param values 
+	  that evaluate to false.
+	- helios_config_unset.pl: changed output to make it more 
+	  consistent with the other new commands.
+	- helios_job_status.pl, helios_job_info.pl: specifying --jobid
+	  no longer required; the first arg is assumed to be the jobid.
+	- helios_job_submit.pl: -v and -n now work in addition 
+	  to --verbose and --no-validate.
+	- helios_service_status.pl: separated service version to its own 
+	  line in output.  Added '--epoch-time' option to report time in 
+	  epoch seconds instead of localtime() format.
 2.71_4350  Fri Oct 25 23:23:29 2013
 	- NEW helios_service_status.pl - report service status.
 	- NEW helios_job_status.pl - report job exitstatus (if completed).
