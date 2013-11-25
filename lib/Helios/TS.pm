@@ -11,7 +11,7 @@ use Helios::TS::Job;
 
 use constant OK_ERRORS => { map { $_ => 1 } Data::ObjectDriver::Errors->UNIQUE_CONSTRAINT, };
 
-our $VERSION = '2.71_4051';
+our $VERSION = '2.71_4770';
 
 # FILE CHANGE HISTORY
 # (This code is modified from the original TheSchwartz.pm where noted.)
@@ -27,7 +27,8 @@ our $VERSION = '2.71_4051';
 # a concern for Helios::TS (Oracle's indexes do not exhibit the issue t_r_a() 
 # is supposed to solve, and we're not sure MySQL indexes do anymore either).  
 # [LH] [2013-10-04]: Fix for Helios bug [RT79690], which appears to be a DBD 
-# problem where a LOB becomes unbound in a query. 
+# problem where a LOB becomes unbound in a query.
+# [LH] [2013-11-24]: Removed old code already commented out. 
 
 our $T_AFTER_GRAB_SELECT_BEFORE_UPDATE;
 our $T_LOST_RACE;
@@ -120,17 +121,6 @@ sub find_job_for_workers {
 			}
 # END CODE Copyright (C) 2012-3 by Logical Helion, LLC.
 
-#[]old
-#            @jobs = $driver->search('TheSchwartz::Job' => {
-#                    funcid        => \@ids,
-#                    run_after     => \ "<= $unixtime",
-#                    grabbed_until => \ "<= $unixtime",
-#                }, { limit => $FIND_JOB_BATCH_SIZE,
-#                    ( $client->prioritize ? ( sort => 'priority',
-#                    direction => $direction ) : () )
-#                }
-#            );
-#        };
 # [LH] [2013-10-04]: Implemented "virtual jobtypes" - funcmap entries without 
 # actual TheSchwartz::Worker subclasses to back them up.  Switched to using
 # Helios::TS::Job instead of base TheSchwartz::Job because of this.
@@ -236,7 +226,6 @@ sub work_once {
         $job = $client->find_job_for_workers;
     }
 
-#[]old   my $class = $job ? $job->funcname : undef;
 	# [LH] [2013-10-04]: Virtual Jobtypes: Use the active_worker_class 
 	# instead of the job's funcname if active_worker_class is set.
 	my $class = $client->{active_worker_class} || ($job ? $job->funcname : undef);

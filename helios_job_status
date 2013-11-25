@@ -7,7 +7,7 @@ use Getopt::Long;
 
 use Helios::Service;
 
-our $VERSION = '2.71_4460';
+our $VERSION = '2.71_4770';
 
 our $Args;
 our @JobHistory;
@@ -76,6 +76,31 @@ $dbh->disconnect();
 
 exit(0);
 
+
+=head1 NAME
+
+helios_job_status - get a Helios job's exitstatus
+
+=head1 SYNOPSIS
+
+ helios_job_status --jobid=<jobid> 
+   
+ # return the exitstatus for job 12345
+ helios_job_status --jobid=12345
+
+ # first argument is assumed to be jobid, so "--jobid=" is optional
+ helios_job_status 12345
+
+=head1 DESCRIPTION
+
+The helios_job_status command can be used to retrieve the exitstatus a job 
+recorded in the Helios collective database.  When a job is finished using the 
+completedJob(), failedJob(), or failedJobPermanent() methods in your 
+Helios::Service class, an exitstatus is recorded.  Successful jobs are marked 
+with a status of 0, while failed jobs will have an nonzero status.  If a job
+has been marked as finished in a Helios collective, this command will return 
+that job's exitstatus via STDOUT.  If the job in question does not exist or
+has not been completed, nothing will be returned.
 
 =head1 AUTHOR
 

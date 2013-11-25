@@ -11,7 +11,7 @@ use Helios::JobHistory;
 use Helios::TS::Job;
 use Helios::JobType;
 
-our $VERSION = '2.71_4460';
+our $VERSION = '2.71_4770';
 
 our $OPT_JOBID = '';
 our $OPT_ARGS  = 0;
@@ -161,6 +161,33 @@ if ($OPT_LOGS) {
 
 exit(0);
 
+
+=head1 NAME
+
+helios_job_info - get detailed information about a job in a Helios collective
+
+=head1 SYNOPSIS
+
+ helios_job_info --jobid=<jobid> [--args] [--logs]
+   
+ # just display job metadata info for job 12345
+ helios_job_info --jobid=12345
+    
+ # display job metadata, job argument string, and any log messages
+ helios_job_info --jobid=12345 --args --logs
+ 
+ # first argument is assumed to be jobid, so "--jobid=" is optional
+ # you can also use short form options
+ helios_job_info 12345 -a -l
+
+
+=head1 DESCRIPTION
+
+The helios_job_info command can be used to retrieve information about a job in
+the Helios collective database.  It will display job metadata such as jobtype, 
+submit time, and (if the job has completed) complete time and exitstatus.  The 
+command will also retrieve the job argument string if the --args option is 
+specified, and any log messages recorded for the job with the --logs option.
 
 =head1 AUTHOR
 

@@ -12,8 +12,6 @@ use Sys::Hostname;
 # [LH] 2013-08-04:  Added Fcntl for better pidfile locking.  [RT81914]
 use Fcntl qw(:DEFAULT :flock);
 
-use Error qw(:try);
-
 use Helios;
 use Helios::Error;
 use Helios::LogEntry::Levels qw(:all);
@@ -21,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TS;
 use Helios::Config;
 
-our $VERSION = '2.71_4250';
+our $VERSION = '2.71_4770';
 
 # FILE CHANGE HISTORY
 # [2012-01-08]: Added a check to try to prevent loading code outside of @INC.
@@ -80,6 +78,12 @@ our $VERSION = '2.71_4250';
 # Added startup message so user knows which collective db the daemon connected 
 # to.  Partially updated POD with new options and mentioned new 
 # Helios::Configuration POD; also added mention of zero_sleep_interval option.
+# [LH] [2013-11-24]: Removed use of Error module as all use of try {} catch {} 
+# blocks have been removed.  Changed command line option handling so jobtypes 
+# can be specified with multiple --jobtype options as well as a single comma-
+# delimited --jobtypes argument.  Removed old commented out code.  Database
+# reconnect code now dumps all cached database connections before attempting 
+# a reconnect. 
 
 =head1 NAME
 
@@ -269,7 +273,7 @@ our $OPT_CLASS      = '';
 our $OPT_CLEAR_HALT = 0;
 our $OPT_DEBUG      = 0;
 our $OPT_HELP       = 0;
-our $OPT_JOBTYPES   = '';
+our @OPT_JOBTYPES   = ();
 our $OPT_VERSION    = 0;
 if ( defined($ARGV[0]) && $ARGV[0] !~ /^\-/) {
 	$OPT_CLASS = shift @ARGV;
@@ -278,12 +282,11 @@ GetOptions(
 	"service=s"  => \$OPT_CLASS,
 	"clear-halt" => \$OPT_CLEAR_HALT,
 	"help"       => \$OPT_HELP,
-	"jobtypes=s" => \$OPT_JOBTYPES,
+	"jobtypes=s" => \@OPT_JOBTYPES,
 	"version"    => \$OPT_VERSION,
 	"debug"      => \$OPT_DEBUG,
 );
-$OPT_JOBTYPES =~ s/ //g;	#[]more sanity checking!
-our @ALT_JOBTYPES = split(/,/, $OPT_JOBTYPES);
+our @ALT_JOBTYPES = split(/,/, join(','=>@OPT_JOBTYPES));
 $DEBUG_MODE = 1 if $OPT_DEBUG;
 # END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
@@ -354,11 +357,6 @@ unless ($OPT_CLASS) {
 }
 # END CODE Copyright (C) 2013 by Logical Helion, LLC.
 print "Attempting to load $worker_class...\n"; 
-#[]old
-#unless ( $worker_class ) {
-#	print "You must specify the module name of a Helios service.\n";
-#	exit(1);
-#}
 require_module($worker_class);
 
 if ( defined($worker_class->VERSION) ) {
@@ -548,7 +546,8 @@ Sleep master_launch_interval seconds and start the operation loop again.
 =cut
 
 MAIN_LOOP:{
-	try {
+	# [LH] [2013-11-24]: Replaced try {} otherwise {} block with eval {} or do {}. 
+	eval {
 	
 		# while not halted
 		while (!defined($params->{HALT}) ) {
@@ -696,8 +695,9 @@ MAIN_LOOP:{
 					sleep $MASTER_LAUNCH_INTERVAL;
 				}
 		}
-		
-	} otherwise {
+		# [LH] [2013-11-24]: Replaced try {} otherwise {} block with eval {} or do {}. 
+		1;
+	} or do {
 		my $e = shift;
 		# if we're a worker process and we ended up here
 		# it's a fluke caused by the database instability
@@ -708,13 +708,24 @@ MAIN_LOOP:{
 			print "EXCEPTION THROWN: ",$e->text,"\n"; 
 			print "ATTEMPTING TO RECONNECT...\n";
 		}
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+		#[] dump all the database connections
+		# [LH] [2013-11-24]: Dump all the cached db connections so we can make
+		# sure we're starting over.
+		my $ck = $HELIOS_DB_CONN->{Driver}->{CachedKids};
+		%$ck = ();
+		$HELIOS_DB_CONN->disconnect() if ( ref($HELIOS_DB_CONN) && $HELIOS_DB_CONN->isa('DBI'));
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
+
 		my $retry;
 		my $return_code = 0;
 		for($retry = 1; $retry <= $SAFE_MODE_RETRIES; $retry++) {
 			my $success = 0;
-			try {
+			# [LH] [2013-11-24]: Replaced try {} otherwise {} block with eval {} or do {}. 
+			eval {
 				$success = $worker->dbConnect();
-			} otherwise {
+				1;
+			} or do {
 				# actually, if we fail, we do nothing
 			};
 			if ($success) {
@@ -729,6 +740,11 @@ MAIN_LOOP:{
 			print "DATABASE RECONNECTION ATTEMPTS FAILED!\n";
 		}
 		if ($return_code) {
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+			# [LH] [2013-11-24]: Reconnect the main db connection variable before
+			# we go back to the main loop.
+			$HELIOS_DB_CONN = $worker->dbConnect();
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 			$worker->logMsg(LOG_CRIT, "Exiting SAFE MODE; Reestablished connection to database after exception: ".$e->text);
 			$worker->errstr(undef);
 			redo MAIN_LOOP;
@@ -807,7 +823,6 @@ sub daemonize {
 	# session and making our own process group
 	# as well as closing any standard open filehandles.
 	POSIX::setsid();
-#[] I may have changed religions on this one
 #	close (STDIN); 
 #	close (STDOUT); 
 #	close (STDERR);

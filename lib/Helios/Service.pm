@@ -19,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::JobType;
 use Helios::Error::JobTypeError;
 
-our $VERSION = '2.71_4250';
+our $VERSION = '2.71_4770';
 
 # FILE CHANGE HISTORY:
 # [2011-12-07]: Updated to support new Helios::Logger API.  Added 
@@ -118,7 +118,10 @@ our $VERSION = '2.71_4250';
 # has not used that in a long time.
 # [LH] [2013-10-18]: Added grab_for() and JobLockInterval() to implement new 
 # retry API.  Added $CACHED_HOSTNAME and modified prep() to reduce calls to 
-# Sys::Hostname::hostname().  
+# Sys::Hostname::hostname(). 
+# [LH] [2013-10-24]: Removed old, already commented out code.  Added POD for 
+# new methods added in 2.7x development series.  Marked getFuncidFromDb() as
+# deprecated; its function has been replaced by lookupJobtypeid().
 
 
 =head1 NAME
@@ -196,6 +199,12 @@ our $DRIVER;	# for caching the Data::ObjectDriver
 
 sub max_retries { $_[0]->MaxRetries(); }
 sub retry_delay { $_[0]->RetryInterval(); }
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+# [LH] [2013-10-18]: Added grab_for() and JobLockInterval() to implement new 
+# retry API.  Like TheSchwartz's setup, the JobLockInterval() defaults to 
+# 3600 sec (1 hr).
+sub grab_for { $_[0]->JobLockInterval() || 3600 }
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
 sub work {
 	my $class = shift;
@@ -427,6 +436,9 @@ These accessors will be needed by subclasses of Helios::Service.
  get/setIniFile()
  get/setJob()
  get/setJobType()
+ get/setAltJobTypes(), addAltJobType()
+ get/setJobTypeid()
+ get/setAltJobtypeids(), addAltJobtypeid()
  errstr()
  debug()
 
@@ -448,6 +460,44 @@ sub getJob { return $_[0]->{job}; }
 # need for helios.pl logging	
 sub setJobType { $_[0]->{jobType} = $_[1]; }
 sub getJobType { return $_[0]->{jobType}; }
+
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+# [LH] [2013-10-04] Virtual jobtype code.
+sub setAltJobTypes {
+	my $self = shift;
+	$self->{altJobTypes} = [@_];
+}
+sub getAltJobTypes {
+	if ( defined $_[0]->{altJobTypes} ) {
+		return @{ $_[0]->{altJobTypes} };
+	} else {
+		return undef;
+	}
+}
+sub addAltJobType {
+	push(@{ $_[0]->{altJobTypes} }, $_[1]);
+}
+
+# [LH] [2013-10-04] Virtual jobtype code.
+sub setJobtypeid { $_[0]->{jobtypeid} = $_[1]; }
+sub getJobtypeid { return $_[0]->{jobtypeid}; }
+
+sub setAltJobtypeids {
+	my $self = shift;
+	$self->{altJobtypeids} = [@_];
+}
+sub getAltJobtypeids {
+	if ( defined $_[0]->{altJobtypeids} ) {
+		return @{ $_[0]->{altJobtypeids} };
+	} else {
+		return undef;
+	}
+}
+sub addAltJobtypeid {
+	push(@{ $_[0]->{altJobtypeids} }, $_[1]);
+}
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
+
 
 sub setConfig { $_[0]->{config} = $_[1]; }
 sub getConfig { return $_[0]->{config}; }
@@ -477,31 +527,44 @@ sub getDriver {
 sub errstr { my $self = shift; @_ ? $self->{errstr} = shift : $self->{errstr}; }
 sub debug { my $self = shift; @_ ? $self->{debug} = shift : $self->{debug}; }
 
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+# [LH] [2013-10-04] New constructor initializes attributes in the underlying
+# object structure and can only be called as a class method.  
 
 =head1 CONSTRUCTOR
 
 =head2 new()
 
-The new() method doesn't really do much except create an object of the appropriate class.  (It can 
-overridden, of course.)
-
-It does set the job type for the object (available via the getJobType() method).
+The new() method creates a new service class instance.  It initializes all of 
+the underlying attribute values and sets the instance's jobType to the name of 
+the class.
 
 =cut
 
-sub new_old {
-	my $caller = shift;
-	my $class = ref($caller) || $caller;
-#	my $self = $class->SUPER::new(@_);
-	my $self = {};
-	bless $self, $class;
+sub new {
+	my $cl = shift;
+	my $self = {
+		'jobType'       => undef,
+		'altJobTypes'   => undef,
+		'jobtypeid'     => undef,
+		'altJobtypeids' => undef,
+		'hostname'      => undef,
+		'inifile'       => undef,
+		'job'           => undef,
+		
+		'config' => undef,
+		'debug'  => undef,
+		'errstr' => undef,
+	};
+	bless $self, $cl;
 
 	# init fields
-	my $jobtype = $caller;
+	my $jobtype = $cl;
 	$self->setJobType($jobtype);
 
 	return $self;
 }
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
 
 =head1 INTERNAL SERVICE CLASS METHODS
@@ -698,7 +761,7 @@ sub getConfigFromDb {
 }
 
 
-=head2 getFuncidFromDb()
+=head2 getFuncidFromDb() [DEPRECATED]
 
 Queries the collective database for the funcid of the service class and 
 returns it to the calling routine.  The service name used in the query is the 
@@ -708,6 +771,9 @@ This method is most commonly used by helios.pl to get the funcid associated
 with a particular service class, so it can scan the job table for waiting jobs.
 If their are jobs for the service waiting, helios.pl may launch new worker 
 processes to perform these jobs.
+
+As of Helios 2.80, getFuncidFromDb() has been replaced by lookupJobtypeid().  
+This method is thus deprecated.
 
 =cut
 
@@ -736,6 +802,57 @@ sub getFuncidFromDb {
 }
 
 
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+# [LH] [2013-10-04] Virtual jobtype code.
+=head2 lookupAltJobtypeids(@jobtypenames)
+
+The lookupAltJobtypeids() method uses the lookupJobtypeid() method to determine 
+the jobtypeids of all of the service instance's alternate jobtypes.  If given 
+a list of jobtype names, these will override any jobtypes previously set with
+the setAltJobTypes() or addAltJobType() methods.
+
+Usually, "alternate" jobtypes and jobtypes specified on the helios.pl 
+command line using the --jobtypes option.  The "primary" jobtype is the jobtype
+matching the service class's name.
+
+=cut
+
+sub lookupAltJobtypeids {
+	my $self = shift;
+	my @jobtypes = @_ || $self->getAltJobTypes();
+	my $config = $self->getConfig();
+	my @ids;
+	
+	for (@jobtypes) {
+		my $jtid = $self->lookupJobtypeid($_);
+		unless ($jtid) { Helios::Error::JobTypeError->throw("lookupAltJobtypeids(): $_ cannot be found in collective database."); }
+		push(@ids, $jtid);
+		$self->addAltJobtypeid($jtid);
+	}
+	return @ids;
+}
+
+
+=head2 lookupJobtypeid($jobtypename)
+
+Given the name of a jobtype, lookupJobtypeid() uses the Helios::JobType class 
+to find the jobtypeid of the jobtype and returns it to the calling routine.  
+If the jobtype does not exist, the method returns undef.
+
+=cut
+
+sub lookupJobtypeid {
+	my $self = shift;
+	my $jt = shift;
+
+	my $jobtype = Helios::JobType->lookup(name => $jt, config => $self->getConfig());
+	if ($jobtype) {
+		return $jobtype->getJobtypeid();
+	} else {
+		return undef;
+	}
+}
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
 
 =head2 jobsWaiting() 
@@ -745,26 +862,43 @@ waiting.  Only meant for use with the helios.pl service daemon.
 
 =cut
 
-sub jobsWaiting_old {
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+# [LH] [2013-10-04] jobsWaiting() replaced with new version for virtual 
+# jobtypes.    
+sub jobsWaiting {
 	my $self = shift;
-	my $params = $self->getConfig();
-	my $jobType = $self->getJobType();
-
-
-# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
-	my $jobsWaiting;
-	my $funcid = $self->getFuncid();
+	my $num_of_jobs = 0;
+	my $primary_jobtypeid = $self->getJobtypeid();
+	my @alt_jobtypeids;
+	my $sth;
 	eval {
 		my $dbh = $self->dbConnect();
-		unless ( defined($funcid) ) {
-			$funcid = $self->getFuncidFromDb();
+		unless ( defined($primary_jobtypeid) ) {
+			$primary_jobtypeid = $self->lookupJobtypeid($self->getJobType);
+			$self->setJobtypeid($primary_jobtypeid);
+		}
+		if ( $self->getAltJobTypes() ) {
+			if ( $self->getAltJobtypeids() ) {
+				@alt_jobtypeids = $self->getAltJobtypeids();
+			} else {
+				@alt_jobtypeids = $self->lookupAltJobtypeids();
+			}
 		}
 		
-		my $sth = $dbh->prepare_cached('SELECT COUNT(*) FROM job WHERE funcid = ? AND (run_after < ?) AND (grabbed_until < ?)');
-		$sth->execute($funcid, time(), time());
+		if (@alt_jobtypeids) {
+			my @plhrs = ('?');	# one for the primary
+			for (@alt_jobtypeids) { push(@plhrs,'?'); }
+			my $plhrs_str = join(',' => @plhrs);
+			
+			$sth = $dbh->prepare_cached("SELECT COUNT(*) FROM job WHERE funcid IN($plhrs_str) AND (run_after < ?) AND (grabbed_until < ?)");
+			$sth->execute($primary_jobtypeid, @alt_jobtypeids, time(), time());
+		} else {
+			$sth = $dbh->prepare_cached('SELECT COUNT(*) FROM job WHERE funcid = ? AND (run_after < ?) AND (grabbed_until < ?)');
+			$sth->execute($primary_jobtypeid, time(), time());
+		}
 		my $r = $sth->fetchrow_arrayref();
 		$sth->finish();
-		$jobsWaiting = $r->[0];
+		$num_of_jobs = $r->[0];
 		
 		1;
 	} or do {
@@ -772,13 +906,9 @@ sub jobsWaiting_old {
 		Helios::Error::DatabaseError->throw("$E");
 	};
 	
-	return $jobsWaiting;
-# END CODE Copyright (C) 2012 by Logical Helion, LLC.
-
-
-
-
+	return $num_of_jobs;
 }
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
 
 # BEGIN CODE Copyright (C) 2012 by Andrew Johnson.
@@ -1339,16 +1469,60 @@ sub run {
     throw Helios::Error::FatalNoRetry($_[0]->getJobType.': run() method not implemented!'); 
 }
 
-=head2 MaxRetries() and RetryInterval()
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
 
-These methods control how many times a job should be retried if it fails and 
+=head2 MaxRetries(), RetryInterval(), and JobLockInterval()
+
+The MaxRetries(), RetryInterval(), and JobLockInterval() methods specify to 
+Helios the number of reattempts it should make at running a job and the 
+frequency of those attempts.   
+
+control how many times a job should be retried if it fails and 
 how long the system should wait before a retry is attempted.  If you don't 
-defined these, jobs will not be retried if they fail.   
+defined these, jobs will not be retried if they fail.
+
+MaxRetries() is straightforward; set it to the number of times we want a job 
+to be retried if it fails.
+
+RetryInterval() is the amount of time (in seconds) to wait after a job fails 
+before a job is available to try again.
+
+JobLockInterval() is the amount of time (in seconds) a job is locked for 
+processing.  This amount of time should be enough time to make sure a job can 
+be completed or at marked as failed.  The default is 3600 sec (1 hour).  
+
+RetryInterval() and JobLockInterval() can interact in an odd way:  for example,
+if you want to retry a job every 60 secs, you can add:
+
+ sub RetryInterval { 60 }
+
+to your service class.  However, your jobs will still be locked for an hour, 
+because 3600 is the JobLockInterval() default.  If you want to retry jobs 
+more frequently than a hour, you need to add a JobLockInterval() method to 
+your service class as well as a RetryInterval() method.  So, to retry jobs 
+every 60 secs, add both of the following methods to your service class:
+
+ sub RetryInterval { 60 }
+ sub JobLockInterval { 60 }
+
+Keep in mind this will reduce the amount of time available for your service to 
+mark a job as completed or failed.  If it has not done so by the time the 
+JobLockInterval() value has expired, the job will be seen by the Helios system 
+as available for processing again, and another worker process will pick up and 
+attempt to run the job.  So always make sure your JobLockInterval() allows 
+enough time to actually complete a job.  Another rule of thumb is to set 
+RetryInterval() and JobLockInterval() to the same value if RetryInterval() is 
+less than 3600.
 
 =cut
 
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
+
 sub MaxRetries { return undef; }
 sub RetryInterval { return undef; }
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+sub JobLockInterval { undef }
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
 =head2 JobClass()
 
@@ -1421,175 +1595,6 @@ sub _require_module {
 }
 
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
-
-
-# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
-
-# [LH] [2013-10-04] Virtual jobtype support code!  All this code adds
-# support to the class for "alternate jobtypes" and makes sure jobsWaiting()
-# takes all jobtypes into account when jobs are scanned for in the JOB table.
-
-#[] this code should be distributed to their respective places in the class
-# before final release.  During development and testing, they can stay here 
-# for now since they're all here to support virtual jobtypes.
-
-# [LH] [2013-10-04] Virtual jobtype code.
-sub setJobtypeid { $_[0]->{jobtypeid} = $_[1]; }
-sub getJobtypeid { return $_[0]->{jobtypeid}; }
-
-# [LH] [2013-10-04] Virtual jobtype code.
-sub setAltJobTypes {
-	my $self = shift;
-	$self->{altJobTypes} = [@_];
-}
-sub getAltJobTypes {
-	if ( defined $_[0]->{altJobTypes} ) {
-		return @{ $_[0]->{altJobTypes} };
-	} else {
-		return undef;
-	}
-}
-sub addAltJobType {
-	push(@{ $_[0]->{altJobTypes} }, $_[1]);
-}
-
-# [LH] [2013-10-04] Virtual jobtype code.
-sub setAltJobtypeids {
-	my $self = shift;
-	$self->{altJobtypeids} = [@_];
-}
-sub getAltJobtypeids {
-	if ( defined $_[0]->{altJobtypeids} ) {
-		return @{ $_[0]->{altJobtypeids} };
-	} else {
-		return undef;
-	}
-}
-sub addAltJobtypeid {
-	push(@{ $_[0]->{altJobtypeids} }, $_[1]);
-}
-
-# [LH] [2013-10-04] Virtual jobtype code.
-=head2 lookupAltJobtypeids(@jobtypenames)
-
-=cut
-
-sub lookupAltJobtypeids {
-	my $self = shift;
-	my @jobtypes = @_ || $self->getAltJobTypes();
-	my $config = $self->getConfig();
-	my @ids;
-	
-	for (@jobtypes) {
-		my $jtid = $self->lookupJobtypeid($_);
-		unless ($jtid) { Helios::Error::JobTypeError->throw("lookupAltJobtypeids(): $_ cannot be found in collective database."); }
-		push(@ids, $jtid);
-		$self->addAltJobtypeid($jtid);
-	}
-	return @ids;
-}
-
-=head2 lookupJobtypeid($jobtypename)
-
-=cut
-
-sub lookupJobtypeid {
-	my $self = shift;
-	my $jt = shift;
-
-	my $jobtype = Helios::JobType->lookup(name => $jt, config => $self->getConfig());
-	if ($jobtype) {
-		return $jobtype->getJobtypeid();
-	} else {
-		return undef;
-	}
-}
-
-
-# [LH] [2013-10-04] jobsWaiting() replaced with new version for virtual 
-# jobtypes.    
-sub jobsWaiting {
-	my $self = shift;
-	my $num_of_jobs = 0;
-	my $primary_jobtypeid = $self->getJobtypeid();
-	my @alt_jobtypeids;
-	my $sth;
-	eval {
-		my $dbh = $self->dbConnect();
-		unless ( defined($primary_jobtypeid) ) {
-			$primary_jobtypeid = $self->lookupJobtypeid($self->getJobType);
-			$self->setJobtypeid($primary_jobtypeid);
-		}
-		if ( $self->getAltJobTypes() ) {
-			if ( $self->getAltJobtypeids() ) {
-				@alt_jobtypeids = $self->getAltJobtypeids();
-			} else {
-				@alt_jobtypeids = $self->lookupAltJobtypeids();
-			}
-		}
-		
-		if (@alt_jobtypeids) {
-			my @plhrs = ('?');	# one for the primary
-			for (@alt_jobtypeids) { push(@plhrs,'?'); }
-			my $plhrs_str = join(',' => @plhrs);
-			
-			$sth = $dbh->prepare_cached("SELECT COUNT(*) FROM job WHERE funcid IN($plhrs_str) AND (run_after < ?) AND (grabbed_until < ?)");
-			$sth->execute($primary_jobtypeid, @alt_jobtypeids, time(), time());
-		} else {
-			$sth = $dbh->prepare_cached('SELECT COUNT(*) FROM job WHERE funcid = ? AND (run_after < ?) AND (grabbed_until < ?)');
-			$sth->execute($primary_jobtypeid, time(), time());
-		}
-		my $r = $sth->fetchrow_arrayref();
-		$sth->finish();
-		$num_of_jobs = $r->[0];
-		
-		1;
-	} or do {
-		my $E = $@;
-		Helios::Error::DatabaseError->throw("$E");
-	};
-	
-	return $num_of_jobs;
-}
-
-
-# [LH] [2013-10-04] New constructor initializes attributes in the underlying
-# object structure and can only be called as a class method.  
-sub new {
-	my $cl = shift;
-	my $self = {
-		'jobType'       => undef,
-		'altJobTypes'   => undef,
-		'jobtypeid'     => undef,
-		'altJobtypeids' => undef,
-		'hostname'      => undef,
-		'inifile'       => undef,
-		'job'           => undef,
-		
-		'config' => undef,
-		'debug'  => undef,
-		'errstr' => undef,
-	};
-	bless $self, $cl;
-
-	# init fields
-	my $jobtype = $cl;
-	$self->setJobType($jobtype);
-
-	return $self;
-}
-
-
-# [LH] [2013-10-18]: Added grab_for() and JobLockInterval() to implement new 
-# retry API.  Like TheSchwartz's setup, the JobLockInterval() defaults to 
-# 3600 sec (1 hr).
-sub grab_for { $_[0]->JobLockInterval() || 3600 }
-sub JobLockInterval { undef }
-
-#[] document all the new stuff before release!
-
-# END CODE Copyright (C) 2013 by Logical Helion, LLC.
-
 
 
 1;

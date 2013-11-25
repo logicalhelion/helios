@@ -8,7 +8,7 @@ use Sys::Hostname;
 
 use Helios::Service;
 
-our $VERSION = '2.71_4460';
+our $VERSION = '2.71_4770';
 
 our $Service_Name = '';
 our $Hostname     = '';
@@ -86,6 +86,71 @@ $dbh->disconnect();
 
 
 exit(0);
+
+
+=head1 NAME
+
+helios_service_status - check the status of services running in a Helios collective
+
+=head1 SYNOPSIS
+
+ helios_service_status [--service=<service name>] [--hostname=<hostname>] [--epoch-time]
+ 
+ # list status of all service instances running in collective
+ helios_service_status 
+ 
+ # list status of all service instances running on host wrkhost1
+ helios_service_status --hostname=wrkhost1
+ 
+ # list status of all instances of MyService
+ helios_service_status --service=MyService
+
+ # list information on the MyService instance running on wrkhost1
+ # report the start and last check in times in epoch seconds
+ helios_service_status --service=MyService --hostname=wrkhost1 --epoch-time
+
+=head1 DESCRIPTION
+
+The helios_service_status command reports status information on services 
+running in a Helios collective.  You can use this command for general 
+administration purposes or to build monitoring scripts for services.
+
+The helios_service_status command currently reports 6 key pieces of 
+information:
+
+=over 4
+
+=item Service
+
+name of the service.
+
+=item Version
+
+the version of the service, if one is set.
+
+=item Host
+
+the hostname of the host on which the service is running.
+
+=item PID
+
+The process id of the service daemon.
+
+=item Online Since
+
+the start time of the service daemon.
+
+=item Last Registered
+
+the last time the service daemon "checked in" to the collective.  How often 
+this happens is controlled by the "registration_interval" configuration 
+parameter.  The default is 60 sec, which should be fine for most purposes.
+
+=back
+
+This command basically reports the same type of information as the 
+Helios::Panoptes Collective Admin view, but having it available at the 
+command line adds convenience and enhances the Helios system's scriptability.
 
 =head1 AUTHOR
 

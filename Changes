@@ -1,4 +1,15 @@
 Revision history for Perl extension Helios.
+2.71_4770  Sun Nov 24 21:39:28 2013
+	- Removed .pl extension from all new commands.
+	- Helios::Config->setParam(): fix so false values can be set.
+	- helios.pl: tweaks to database reconnect code.
+	- helios.pl: changes to command line option parsing so multiple 
+	  jobtypes can be specified with multiple --jobtypes options.
+	- helios.pl: removed all use Error-based try {} catch {} blocks. 
+	  This will allow future Helios versions to use exceptions based 
+	  on Exception::Class rather than Error.
+	- Helios::TheSchwartz has been removed; Helios::TS has completely 
+	  replaced it.
 2.71_4460  Sat Nov  2 13:36:52 2013
 	Minor changes and fixes to new commands:
 	- helios_config_get.pl: fixed problem with not returning param 

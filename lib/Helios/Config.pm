@@ -12,7 +12,7 @@ use Helios::ObjectDriver::DBI;
 use Helios::ConfigParam;
 use Helios::Error::ConfigError;
 
-our $VERSION = '2.71_4350';
+our $VERSION = '2.71_4770';
 
 =head1 NAME
 
@@ -566,20 +566,6 @@ sub parseConfDb {
 		}
 	}
 	
-=old	
-	#[]
-	@dbparams = $driver->search( 'Helios::ConfigParam' => { worker_class => $service_name, host => '*'} );
-	foreach (@dbparams) {
-		if ($self->debug) { print $_->param(),'=>',$_->value(),"\n"; }
-		$conf_all_hosts->{$_->param()} = $_->value();
-	}
-	@dbparams = $driver->search( 'Helios::ConfigParam' => { worker_class => $service_name, host => $hostname} );
-	foreach (@dbparams) {
-		if ($self->debug) { print $_->param(), '=>', $_->value(), "\n"; }
-		$conf_this_host->{ $_->param() } = $_->value();
-	}
-=cut
-
 	$conf = $conf_all_hosts;
 	while ( my ($key, $value) = each %$conf_this_host) {
 		$conf->{$key} = $value;
@@ -594,7 +580,10 @@ sub parseConfDb {
 
 =head2 getParam(param => $param_name [, service_name => $service_name] [, hostname => $hostname])
 
-#[]
+Given a service name, parameter name, and (optionally) a hostname, getParam() 
+returns the parameter name's value to the calling routine.
+
+If hostname is not specified, the current host is assumed.
 
 =cut
 
@@ -664,13 +653,7 @@ sub getParam {
 	return $conf->{$param_name};
 }
 
-
-=head2 getAllParams()
-
-#[]
-
-=cut
-
+# should this be here?  Decide before release candidate phase. #[]
 sub getAllParams {
 	my $self = shift;	
 	my $conf_all_hosts = {};
@@ -697,7 +680,11 @@ sub getAllParams {
 
 =head2 setParam(param => $param_name [, service => $service_name]  [, hostname => $hostname], value => $value)
 
-#[]
+Given a service name, parameter name, parameter value, and (optionally) 
+a hostname, setParam() sets the value for that parameter for that service 
+(and host) in the Helios collective database.  If hostname is not specified,
+the current host is assumed.  To set a parameter for all instances of a 
+service in a collective, set the hostname to '*'.
 
 =cut
 
@@ -711,7 +698,7 @@ sub setParam {
 	my $cp;
 
 	# if we don't have everything, stop before we try
-	unless ($service_name && $host && $param_name && $value) {
+	unless ($service_name && $host && $param_name && defined($value) ) {
 		Helios::Error::ConfigError->throw('setParam(): Service, param name, and value are required.');
 	}
 
@@ -773,7 +760,12 @@ sub setParam {
 
 =head2 unsetParam(param => $param_name [, service_name => $service_name] [, hostname => $hostname,])
 
-#[]
+Given a service name, parameter name, and (optionally) a hostname, unsetParam() 
+deletes that parameter's entry in the Helios collective database.  
+
+If hostname is not specified, the current host is assumed.  To unset a 
+parameter that is in effect for all instances of a service, you must set the 
+hostname to '*'.
 
 =cut
 

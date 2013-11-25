@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.71_4460';
+our $VERSION = '2.71_4770';
 
 our $Service_Name;
 our $Param_Name;
@@ -41,13 +41,13 @@ if ($Help_Mode) {
 
 # stop if we were not given at least service and param
 unless ($Service_Name && $Param_Name) {
-	warn "$0: a service name and config parameter name are required.\n";
+	warn "$0: A service name and config parameter name are required.\n";
 	exit(1);
 }
 
 # parse the global config; we'll need it
 eval {
-	$Config = Helios::Config->parseConfig(service => $Service_Name);
+	$Config = Helios::Config->parseConfig();
 	1;	
 } or do {
 	my $E = $@;
@@ -58,10 +58,10 @@ eval {
 # OK, now use Helios::Config to attempt to find the 
 # param in the collective database
 eval {
-	$Value = Helios::Config->getParam(
-		service_name  => $Service_Name,
-		hostname      => $Host,
-		param         => $Param_Name
+	$Value = Helios::Config->unsetParam(
+		service_name => $Service_Name,
+		hostname     => $Host,
+		param        => $Param_Name
 	);
 	1;	
 } or do {
@@ -73,7 +73,7 @@ eval {
 # if we found the param, print its value
 # if not, we print nothing
 if ( defined($Value) ) {
-	print STDOUT "$Value\n";
+	print STDOUT "Service: $Service_Name Hostname: $Host Param: $Param_Name CLEARED.\n";
 }
 
 exit(0);
@@ -81,20 +81,30 @@ exit(0);
 
 =head1 NAME
 
-helios_config_get.pl - get a config parameter's value from the Helios collective database
+helios_config_unset - delete a config param's value from the Helios database
 
 =head1 SYNOPSIS
 
- helios_config_get.pl --service=<service name> [--hostname=<hostname>] --param=<param name>
-
- # get the value of the "endpoint_url" param for MyService on the current host
- helios_config_get.pl --service=MyService --param=endpoint_url
+ helios_config_unset --service=<service name> --param=<param name> [--hostname=<hostname>]
+   
+ # delete the "endpoint_url" param for MyService on all hosts
+ helios_config_unset --service=MyService --hostname=* --param=endpoint_url
+    
+ # delete the "port" param for MyService on the current host
+ helios_config_unset --service=MyService --param=port
 
 =head1 DESCRIPTION
 
-The helios_config_get.pl command can be used to retrieve configuration 
+The helios_config_unset command can be used to delete configuration 
 parameters for a service from the Helios collective database.  This allows 
-Helios configuration parameters to be accessed via shell scripts.
+Helios configuration parameters to be deleted from the command line 
+or shell scripts. 
+
+If the --hostname parameter is not specifed, helios_config_unset will default 
+to the current host.  If you want a parameter to be removed for a service 
+across an entire collective, set the --hostname parameter to '*'.  WARNING:  
+Be careful with deleting parameters with --hostname=* as you will deleting the 
+parameter for every instance of your service in the entire collective! 
 
 =head1 AUTHOR
 

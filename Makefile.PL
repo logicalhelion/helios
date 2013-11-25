@@ -19,10 +19,10 @@ WriteMakefile(
                              Pod::Usage             => 0.01
 							},
     EXE_FILES         => [ 'helios.pl', 'helios_job_submit.pl', 'helios_log_clean.pl',
-                           'helios_jobtype_add.pl', 'helios_config_get.pl',
-                           'helios_config_set.pl', 'helios_config_unset.pl',
-                           'helios_config_import.pl', 'helios_service_status.pl',
-                           'helios_job_info.pl', 'helios_job_status.pl',
+                           'helios_jobtype_add', 'helios_config_get',
+                           'helios_config_set', 'helios_config_unset',
+                           'helios_config_import', 'helios_service_status',
+                           'helios_job_info', 'helios_job_status',
                          ],
     INST_SCRIPT       => 'bin',
     (ExtUtils::MakeMaker->VERSION >= 6.46 ? 
@@ -54,3 +54,4 @@ WriteMakefile(
 # helios_jobtype_add.pl to EXE_FILES.
 # [LH] [2013-10-25]: Added new helios_job_*.pl and helios_service_status.pl to 
 # EXE_FILES.
+# [LH] [2013-11-24]: Changed EXE_FILES to drop .pl from new commands.

@@ -6,7 +6,6 @@ use warnings;
 
 use DBI;
 use Error qw(:try);
-#[] use Helios::TheSchwartz;
 # [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
 use Helios::TS;
 use Helios::TS::Job;
@@ -17,7 +16,7 @@ require XML::Simple;
 use Helios::Error;
 use Helios::JobHistory;
 
-our $VERSION = '2.71_42500000';
+our $VERSION = '2.71_4770';
 
 our $D_OD_RETRIES = 3;
 our $D_OD_RETRY_INTERVAL = 5;
@@ -159,7 +158,6 @@ sub new {
 	bless $self, $class;
 
 	# init fields
-#[]	if ( defined($_[0]) && ref($_[0]) && $_[0]->isa('TheSchwartz::Job') ) {
 	# [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
 	if ( defined($_[0]) && ref($_[0]) && $_[0]->isa('Helios::TS::Job') ) {
 		$self->job($_[0]);
@@ -175,7 +173,6 @@ sub new {
 		}
 # END CODE COPYRIGHT (C) 2013 LOGICAL HELION, LLC.
 	} else {
-#[]		my $schwartz_job = TheSchwartz::Job->new(@_);
 		# [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
 		my $schwartz_job = Helios::TS::Job->new(@_);
 		$self->job($schwartz_job);
@@ -551,7 +548,6 @@ sub submit {
 
 	my $args = [ $params ];
 
-#[]	my $client = Helios::TheSchwartz->new( databases => $databases, verbose => 1 );
 	# [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
 	my Helios::TS $client = Helios::TS->new( databases => $databases, verbose => 1 );
 	my $sjh = $client->insert($job_class, $args);

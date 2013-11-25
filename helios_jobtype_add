@@ -12,14 +12,19 @@ use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 use Helios::JobType;
 
-our $VERSION = '2.71_4051';
+our $VERSION = '2.71_4770';
 
 our $Help_Mode  = 0;
 our $Debug_Mode = 0;
 
-our $JobType_Name;
+our $JobType_Name = '';
 our $JobTypeid;
 our $Config;
+
+# if they didn't use '--name' or '-n', that's OK
+if ($ARGV[0] !~ /^-/) {
+	$JobType_Name = shift @ARGV;
+}
 
 GetOptions (
 	"name=s"    => \$JobType_Name,
@@ -76,19 +81,22 @@ exit(0);
 
 =head1 NAME
 
-helios_jobtype_add.pl - Add a jobtype to the Helios collective database
+helios_jobtype_add - Add a jobtype to the Helios collective database
 
 =head1 SYNOPSIS
 
- helios_jobtype_add.pl --name=MyService
+ helios_jobtype_add --name=MyService
+
+ # "--name" is optional
+ helios_jobtype_add MyNewService
 
 =head1 DESCRIPTION
 
-Use the helios_jobtype_add.pl program to add a new jobtype to your Helios 
+Use the helios_jobtype_add command to add a new jobtype to your Helios 
 collective.  Every Helios job has an associated jobtype, which usually has 
 the same name as the Helios service that will run the job.  However, in some 
 more complex configurations a single Helios service can service multiple 
-jobtypes.  In such cases, helios_jobtype_add.pl can be used add new jobtypes
+jobtypes.  In such cases, helios_jobtype_add can be used add new jobtypes
 to the collective database.
 
 =head1 SEE ALSO
