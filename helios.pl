@@ -19,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TS;
 use Helios::Config;
 
-our $VERSION = '2.71_4770';
+our $VERSION = '2.72_0950';
 
 # FILE CHANGE HISTORY
 # [2012-01-08]: Added a check to try to prevent loading code outside of @INC.
@@ -83,7 +83,9 @@ our $VERSION = '2.71_4770';
 # can be specified with multiple --jobtype options as well as a single comma-
 # delimited --jobtypes argument.  Removed old commented out code.  Database
 # reconnect code now dumps all cached database connections before attempting 
-# a reconnect. 
+# a reconnect.
+# [LH] [2014-02-28] POD updates.  Updated copyright info.  Changed 
+# WORKER_LAUNCH_PATTERN values to "linear","dynamic", and "optimistic".
 
 =head1 NAME
 
@@ -119,23 +121,96 @@ Helios collective database (the connection information of which is also defined
 in helios.ini).
 
 Under normal operation, helios.pl will attempt to load the service class 
-specified on the command line and use it to read the contents of the helios.ini 
-file.  If successful, it will attempt to connect to the Helios collective 
-database and read the relevant configuration parameters from there.  If that is 
-successful, helios.pl will daemonize and start servicing jobs of the specified 
-class.  If additional jobtypes are specified with the --jobtypes option, jobs of
-those additional types will also be serviced by the loaded service class.
+specified on the command line and read the contents of the helios.ini file.  If
+successful, it will attempt to connect to the Helios collective 
+database specified in helios.ini and read the configuration parameters relevant
+to the loaded service class from there.  If that is successful, helios.pl will
+then daemonize and start servicing jobs of the specified class.  If additional
+jobtypes are specified with the --jobtypes option, jobs of those additional
+types will also be serviced by the loaded service class.
 
-In debug mode (set HELIOS_DEBUG=1), helios.pl will not disconnect from the 
-terminal, and will output extra debugging information to the screen and the 
-Helios log.  It will also enable debug mode on the service class, which may 
-also support the output of extra debugging information if you so choose.
+=head1 helios.pl COMMAND LINE OPTIONS
+
+=head2 --service [REQUIRED]
+
+The --service option specifies the name of the Helios service to load and
+launch worker processes for.  If you specify the name as the first option on
+the command line, you can actually drop the '--service=' part, as helios.pl
+will assume the first option is the service class name.
+
+Examples:
+
+ helios.pl --service=MyService
+ --OR--
+ helios.pl MyService
+
+=head2 --jobtypes
+
+Normally, a Helios service will run jobs belonging to its own jobtype (the
+service class name matches the jobtype name).  However, as of Helios 2.80, a
+Helios service can run jobs of multiple jobtypes if necessary.  These
+additional jobtypes should be specified on the helios.pl command line with the
+--jobtypes option.  You can specify multiple jobtypes by separating them with
+commas, or specify multiple --jobtype values.  (Thanks to helios.pl's use of
+L<Getopt::Long>, '--jobtype' and '--jobtypes' are interchangable.)
+
+Examples:
+
+ # MyService handles jobs of jobtype "MyService" (the default)
+ helios.pl MyService
+ 
+ # MyService handles MyService jobs and MyIndexer jobs
+ helios.pl MyService --jobtype=MyIndexer
+ 
+ # MyService handles MyService, MyIndexer, and MyMailer jobs
+ helios.pl MyService --jobtypes=MyIndexer,MyMailer
+ --OR--
+ helios.pl MyService --jobtype=MyIndexer --jobtype=MyMailer
+
+For more information about jobtypes and how they relate to jobs and services,
+see the L<Helios::JobType> man page.
+ 
+=head2 --clear-halt
 
 If the --clear-halt option is specified, helios.pl will attempt to remove a HALT
 parameter specified in the Helios configuration for the specified service on the
 current host.  This is helpful if you shutdown your Helios service daemon using 
 the Helios::Panoptes Collective Admin view.  Note that it will NOT remove a HALT
 specified globally (where host = '*').
+
+=head2 --version
+
+The --version option displays the Helios framework version and the helios.pl
+version and then exits.
+
+=head2 --help
+
+The --help option displays this documentation.
+
+=head1 helios.pl ENVIRONMENT VARIABLES
+
+The Helios framework relies directly on two environment variables to function
+correctly.  Both should be exported as well as set to ensure the helios.pl
+child processes can see them as well as the main helios.pl daemon.
+
+=head2 HELIOS_INI [REQUIRED]
+
+The full path to the helios.ini configuration file.  This should be an absolute
+path, not a relative one.  The default is to use a helios.ini in the current
+directory if it exists, which will work if you are running in Debug Mode (see
+HELIOS_DEBUG below), but will cause problems if helios.pl is running normally.
+
+I<Default:  ./helios.ini>
+
+=head2 HELIOS_DEBUG
+
+Setting HELIOS_DEBUG to 1 causes helios.pl to run in Debug Mode.  In Debug Mode,
+helios.pl will not disconnect from the terminal and will output extra debugging
+information to the screen and the Helios log.  It will also enable debug mode
+on the service class, which may support the output of extra debugging
+information if you so choose.
+
+I<Default:  undef>
 
 =head1 HELIOS.INI
 
@@ -181,30 +256,39 @@ instances.
 
 =item dsn [REQUIRED]
 
-Datasource name for the Helios parameter database.  This will also contain the 
-data structures for the underlying TheSchwartz queuing system.
+Datasource name for the Helios collective database.  The collective database
+houses the data structures for service configuration, jobtypes, job queuing and
+history, and the default logging subsystem.
+
+I<Default: none>
 
 =item user [REQUIRED]
 
 Database user for the datasource name described above.
 
+I<Default: none>
+
 =item password [REQUIRED]
 
 Database password for the datasource name described above.
 
+I<Default: none>
+
 =item pid_path
 
 The location where helios.pl should write the PID file for this service 
-instance.  The default is "/var/run/helios".  The name of the PID file will be 
-a variation on the service class's name.
+instance.  The name of the PID file will be a variation on the service class's
+name.
+
+I<Default:  /var/run/helios>
 
 =back
 
 =head3 Configuration options to place in individual service sections:
 
 The options listed in this section are available to tune helios.pl to work 
-better with your Helios service class and the jobs it wants to service.  These
-are read at startup and, unlike other Helios config options, cannot be 
+better with your Helios service class and the jobs it needs to service.  These
+are read at startup and, unlike some other Helios config options, cannot be 
 dynamically changed while helios.pl is running.  If you wish to tune one of 
 these parameters, reset the parameter and restart the service daemon.
 
@@ -217,14 +301,18 @@ after launching workers before accessing the database to update its
 configuration parameters and check for waiting jobs.  The default is 1 second, 
 which should be sufficient for most applications. 
 
+I<Default:  1>
+
 =item zero_launch_interval
 
 Set the zero_launch_interval to determine how long helios.pl should sleep after 
 reaching its MAX_WORKERS limit.  The default is 10 sec.  If jobs are running 
-long enough that helios.pl is frequently hitting is MAX_WORKERS limit (there 
+long enough that helios.pl is frequently hitting the MAX_WORKERS limit (there 
 are waiting jobs but helios.pl can't launch new workers because previously 
 launched jobs are still running), increasing the zero_launch_interval will 
-reduce needless database traffic.  
+reduce needless database traffic.
+
+I<Default:  10>
 
 =item zero_sleep_interval
 
@@ -238,20 +326,21 @@ faster.  If you have a small number of jobs and do not care if they sit in the
 job queue for a few seconds before being serviced, increase this number to 
 reduce database queries. 
 
+I<Default:  10>
+
 =back
 
-=head1 HELIOS CTRL PANEL (helios_params_tb)
+=head1 HELIOS_CONFIG_* AND HELIOS CTRL PANEL (helios_params_tb)
 
 In addition to helios.ini, certain helios.pl configuration options can be set 
-via the Ctrl Panel or Collective Admin views in the Helios::Panoptes web 
-interface.  These configuration options are read by helios.pl from the 
-HELIOS_PARAMS_TB table in the Helios collective database.  Though the Ctrl Panel
-is designed mostly to provide a standardized interface for your service classes
-to store and retrieve configuration parameters, certain helios.pl control 
-parameters can be set here as well.  
-
-For more information on these config options, see the L<Helios::Configuration> 
-man page.
+via the helios_config_* commands or the Ctrl Panel or Collective Admin views
+in the Helios::Panoptes web admin interface.  These configuration options are
+read by helios.pl from the HELIOS_PARAMS_TB table in the Helios collective
+database.  For more information on configuration parameters available to tune
+how a service runs jobs, see the L<Helios::Configuration> man page.  For more
+information on the L<helios_config_get>, L<helios_config_set>,
+L<helios_config_unset> commands and the L<Helios::Panoptes> web admin
+interface, see their respective man pages or Perl POD.
 
 =cut
 
@@ -303,7 +392,7 @@ our %DEFAULTS = (
     WORKER_BLITZ_FACTOR => 1,
     WORKER_MAX_TTL_WAIT_INTERVAL => 20,
     PRIORITIZE_JOBS => 0,
-	WORKER_LAUNCH_PATTERN => 'cons',
+	WORKER_LAUNCH_PATTERN => 'linear',
 );
 our $CLEAN_SHUTDOWN = 1;				# used to determine if we should remove the PID file or not (at least for now)
 
@@ -519,8 +608,8 @@ Refresh configuration parameters from database.
 
 =item 2.
 
-Check job queue to see if there are jobs available for processing (if not, sleep for 
-zero_sleep_interval seconds and start again).
+Check job queue to see if there are jobs of the correct jobtype(s) available
+for processing (if not, sleep for zero_sleep_interval seconds and start again).
 
 =item 3.
 
@@ -531,11 +620,11 @@ the running jobs to complete (the default is 10 secs).
 
 =item 4.
 
-Subtract the number of currently running workers from MAX_WORKERS and launch that 
-many workers to handle the available jobs.  If MAX_WORKERS is 5 and only 2 
-workers are running, that means the helios.pl daemon will launch 3 workers.  If 
-there are less than MAX_WORKERS jobs available for processing, only 1 worker 
-will be launched to reduce job contention between workers in the collective.
+If there are jobs available and the MAX_WORKERS limit has not been reached,
+determine the number of additional workers to launch and launch them.  The
+number of workers to launch is governed by the WORKER_LAUNCH_PATTERN
+configuration parameter; see the L<Helios::Configuration> man page for more
+information.
 
 =item 5.
 
@@ -776,6 +865,11 @@ exit();
 
 =head1 SUBROUTINES
 
+The helios.pl program calls several of its own functions at various times
+during startup, shutdown, and during main loop operation.  These are probably
+only of limited interest, but are documented here for those wanting to
+understand better the guts of the helios.pl daemon. 
+
 =head1 PROCESS CONTROL FUNCTIONS
 
 =head2 daemonize() 
@@ -864,15 +958,13 @@ sub double_clutch {
 
 =head2 launch_worker()
 
-#[] fix this POD - Helios::TS not TheSchwartz
-
 The launch_worker() function launches a new worker process.  
 After the fork() from the main process, the new child process will call 
-launch_worker().  The launch_worker() function will instantiate a new 
-TheSchwartz object, set the object's B<ability> (TheSchwartz term) to the class 
-of the loaded service, and starts the worker on its way by calling the work() 
+launch_worker() to instantiate and configure a new L<Helios::TS> job queuing
+system object and start the worker on its way by calling the object's work() 
 method.  If the OVERDRIVE run mode is enabled for the service, the 
-work_until_done() method is called instead.
+work_until_done() method is called instead.  See L<Helios::Configuration> for
+information about running workers in OVERDRIVE vs. Normal Mode.
 
 =cut
 
@@ -1319,10 +1411,20 @@ sub require_module {
 
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
-# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
+# BEGIN CODE Copyright (C) 2012-4 by Logical Helion, LLC.
 # [LH] [2013-09-21]: Code to implement WORKER_LAUNCH_PATTERN feature.
+# [LH] [2014-02-28]: Changed algorithm names to:  linear, dynamic, optimistic.
+# Wrote documentation for function.
 
 =head2 workers_to_launch($waiting_jobs, $running_workers, $max_workers)
+
+Given the number of waiting jobs, currently running workers, and maximum
+workers to launch, workers_to_launch() returns the number of worker processes
+helios.pl should launch to correctly handle the current job workload.  There
+are several different algorithms helios.pl can use to determine this number,
+which is dependent on the environment, available resources, and type of
+application.  See L<Helios::Configuration> for the list of possible values and
+an explanation of the worker launching algorithms.
 
 =cut
 
@@ -1347,9 +1449,9 @@ sub workers_to_launch {
 
 	# ok, we might be able to launch some workers
 	SWITCH: {
-		# opportunistic
+		# optimistic
 		# for big, fast collective databases with lots of short running jobs
-		if ( $wlp eq 'oppt') {
+		if ( $wlp eq 'optimistic') {
 			# launch a worker for each waiting job, 
 			# or all available workers
 			# whichever is less
@@ -1359,11 +1461,11 @@ sub workers_to_launch {
 				return $waiting_jobs;
 			}
 		}
-		# progressive
+		# dynamic
 		# for fast collectives that need to launch workers more slowly
 		# e.g. an app with a slow or limited shared resource
 		# this will be the the Helios 3.x default
-		if ( $wlp eq 'prog') {
+		if ( $wlp eq 'dynamic') {
 			# launch the difference between running workers and waiting jobs
 			# e.g. 14 waiting jobs, 10 workers running, launch 4
 			# if waiting jobs exceed available workers, just launch available workers
@@ -1375,21 +1477,21 @@ sub workers_to_launch {
 				return $diff;
 			}
 		}
-		# conservative
+		# linear
 		# for slow collective databases, or apps that only run a 
 		# smaller number of jobs, or longer running jobs
 		# this was the Helios 2.x default
-		if ( $wlp eq 'cons') {
+		if ( $wlp eq 'linear') {
 			return 1;
 		}
-		# the default is actually 'conservative'
+		# the default is actually 'linear'
 		return 1;
 	}
 
 
 }
 
-# END CODE Copyright (C) 2012 by Logical Helion, LLC.
+# END CODE Copyright (C) 2012-4 by Logical Helion, LLC.
 
 
 =head1 SEE ALSO
@@ -1405,7 +1507,7 @@ Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
 Copyright (C) 2007-9 by CEB Toolbox, Inc.
 
 Portions of this software, where noted, are
-Copyright (C) 2012-2013 by Logical Helion, LLC.
+Copyright (C) 2012-2014 by Logical Helion, LLC.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

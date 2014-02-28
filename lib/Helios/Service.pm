@@ -19,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::JobType;
 use Helios::Error::JobTypeError;
 
-our $VERSION = '2.71_4770';
+our $VERSION = '2.72_0950';
 
 # FILE CHANGE HISTORY:
 # [2011-12-07]: Updated to support new Helios::Logger API.  Added 
@@ -122,7 +122,8 @@ our $VERSION = '2.71_4770';
 # [LH] [2013-10-24]: Removed old, already commented out code.  Added POD for 
 # new methods added in 2.7x development series.  Marked getFuncidFromDb() as
 # deprecated; its function has been replaced by lookupJobtypeid().
-
+# [LH] [2014-02-28]: Changed max_retries() and retry_delay() to default to zero
+# rather than undef to eliminate some warnings.
 
 =head1 NAME
 
@@ -197,8 +198,8 @@ our $INIT_CONFIG_CLASS; # for config system
 
 our $DRIVER;	# for caching the Data::ObjectDriver
 
-sub max_retries { $_[0]->MaxRetries(); }
-sub retry_delay { $_[0]->RetryInterval(); }
+sub max_retries { $_[0]->MaxRetries() || 0; }
+sub retry_delay { $_[0]->RetryInterval() || 0; }
 # BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
 # [LH] [2013-10-18]: Added grab_for() and JobLockInterval() to implement new 
 # retry API.  Like TheSchwartz's setup, the JobLockInterval() defaults to 
@@ -889,7 +890,7 @@ sub jobsWaiting {
 			my @plhrs = ('?');	# one for the primary
 			for (@alt_jobtypeids) { push(@plhrs,'?'); }
 			my $plhrs_str = join(',' => @plhrs);
-			
+
 			$sth = $dbh->prepare_cached("SELECT COUNT(*) FROM job WHERE funcid IN($plhrs_str) AND (run_after < ?) AND (grabbed_until < ?)");
 			$sth->execute($primary_jobtypeid, @alt_jobtypeids, time(), time());
 		} else {

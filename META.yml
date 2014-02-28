@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Helios
-version:            2.60
+version:            2.71_4770
 abstract:           A system for distributed job processing applications.
 author:
     - Andrew Johnson <lajandy at cpan dotorg>
@@ -19,11 +19,15 @@ requires:
     Test::Simple:        0.72
     TheSchwartz:         1.04
     XML::Simple:         2.14
+resources:
+    bugtracker:  https://rt.cpan.org/Public/Dist/Display.html?Name=Helios
+    homepage:    http://helios.logicalhelion.org
+    repository:  git://github.com/logicalhelion/helios.git
 no_index:
     directory:
         - t
         - inc
-generated_by:       ExtUtils::MakeMaker version 6.55_02
+generated_by:       ExtUtils::MakeMaker version 6.57_05
 meta-spec:
     url:      http://module-build.sourceforge.net/META-spec-v1.4.html
     version:  1.4

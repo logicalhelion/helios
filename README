@@ -1,4 +1,4 @@
-Helios version 2.60
+Helios version 2.80
 ===================
 
 INSTALLATION
@@ -37,7 +37,7 @@ This version of the software is based on Helios 2.23, which is
 Copyright (C) 2007-8 by CEB Toolbox, Inc., and is available from 
 CPAN at:  http://search.cpan.org/~lajandy/Helios-2.23/
 
-Portions of this software are Copyright (C) 2012-3 by Logical Helion, LLC
+Portions of this software are Copyright (C) 2012-4 by Logical Helion, LLC
 where noted.
 
 Portions of this software are Copyright (C) 2009-12 by Andrew Johnson

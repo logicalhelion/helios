@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use base 'Helios::Error::BaseError';
 
-our $VERSION = '2.71_4051';
+our $VERSION = '2.72_0950';
 
 1;
 __END__
@@ -35,7 +35,7 @@ Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2013 by Logical Helion, LLC.
+Copyright (C) 2013-4 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

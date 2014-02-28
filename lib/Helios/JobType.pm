@@ -10,7 +10,7 @@ use Helios::ObjectDriver;
 use Helios::Error;
 use Helios::Error::JobTypeError;
 
-our $VERSION = '2.71_4250';
+our $VERSION = '2.72_0950';
 
 =head1 NAME
 
@@ -317,7 +317,7 @@ Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2013 by Logical Helion, LLC.
+Copyright (C) 2013-4 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

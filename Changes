@@ -1,4 +1,15 @@
 Revision history for Perl extension Helios.
+2.72_0950  Fri Feb 28 16:36:48 2014
+	HELIOS 2.80 RELEASE CANDIDATE 1
+	-Resolved service/service_name inconsistency in Helios::Config 
+	 API.  Accessor method is set/getService, and the 
+	 get/set/unsetParam methods take 'service' as a parameter.  The
+	 set/getServiceName() methods are retained for backward 
+	 compatibility. 
+	-Changed WORKER_LAUNCH_PATTERN names to be more descriptive:
+	 linear, dynmaic, optimistic.  As before, linear is the default.
+	-Filled gaps in Helios::Configuration guide and helios.pl POD.
+	-Updated copyright info.
 2.71_4770  Sun Nov 24 21:39:28 2013
 	- Removed .pl extension from all new commands.
 	- Helios::Config->setParam(): fix so false values can be set.

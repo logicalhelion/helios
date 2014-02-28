@@ -4,14 +4,13 @@ use 5.008;
 use strict;
 use warnings;
 use Getopt::Long;
-use Data::Dumper; #[]
 use Config::IniFiles; 	# we'll be using this directly to parse the input file
 
 use Helios::Config;
 use Helios::Error;
 use Helios::ObjectDriver::DBI;	#[] change to H::OD later
 
-our $VERSION = '2.71_4770';
+our $VERSION = '2.72_0950';
 
 our $Debug = 0;
 our $Help_Mode = 0;
@@ -65,8 +64,6 @@ foreach my $section (@sections) {
 	}
 }
 
-print Dumper($config_struct);	#[]
-
 print "Found $param_cnt parameters for ", 
 	scalar keys %$config_struct, " services.\n";
 
@@ -79,10 +76,10 @@ foreach my $class (keys %$config_struct) {
 	foreach my $host ( keys %{ $config_struct->{$class} }) {
 		foreach my $param (keys %{ $config_struct->{$class}->{$host} } ) {
 			Helios::Config->setParam(
-				service_name => $class,
-				hostname     => $host,
-				param        => $param,
-				value        => $config_struct->{$class}->{$host}->{$param}
+				service  => $class,
+				hostname => $host,
+				param    => $param,
+				value    => $config_struct->{$class}->{$host}->{$param}
 			);
 			print "$class|$host|$param set to ", $config_struct->{$class}->{$host}->{$param} ,"\n" if $Verbose;
 			$imp_cnt++;
@@ -97,7 +94,7 @@ exit(0);
 
 =head1 NAME
 
-helios_config_import.pl - import a INI-style config file into the Helios database
+helios_config_import - import a INI-style config file into the Helios database
 
 =head1 SYNOPSIS
 
@@ -108,12 +105,31 @@ helios_config_import.pl - import a INI-style config file into the Helios databas
  email_notification=off 
 
  # command to import config parameters in myservice.ini into the Helios database
- helios_config_import.pl --file=myservice.ini
+ helios_config_import --file=myservice.ini
 
 =head1 DESCRIPTION
 
-#[] still missing
+With the helios_config_import command, you can specify a group of configuration
+parameters in an INI-style configuration file, and then import those parameters
+into your Helios collective database with one shell command.
 
+=head1 COMMAND OPTIONS
+
+=over 4
+
+=item --file [REQUIRED]
+
+The name of the INI file to import.
+
+=item --verbose
+
+Prints extra information during the import process.
+
+=item --help
+
+Displays this man page.
+
+=back
 
 =head1 AUTHOR
 
@@ -121,7 +137,7 @@ Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2013 by Logical Helion, LLC.
+Copyright (C) 2013-4 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

@@ -2,13 +2,14 @@ package Helios;
 
 use 5.008000;
 
-our $VERSION = '2.71_4770';
+our $VERSION = '2.72_0950';
 
 # 2011-12-07: Added Andrew Johnson copyright notices.
 # 2012-01-04: Reset all line length limits to 80.  
 # 2012-01-22: Edited summary to "a distributed job processing system."  
 # [LH] 2012-07-16:  Added Logical Helion, LLC and Six Apart Ltd copyright 
 # notices.
+# [LH] [2014-02-28]: Updated copyright info.
 
 =head1 NAME
 
@@ -48,7 +49,7 @@ Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
 
 Copyright (C) 2008-9 by CEB Toolbox, Inc.
 
-Portions of this software are Copyright (C) 2012-3 by Logical Helion, LLC
+Portions of this software are Copyright (C) 2012-4 by Logical Helion, LLC
 where noted.
 
 Portions of this software are Copyright (C) 2009-12 by Andrew Johnson

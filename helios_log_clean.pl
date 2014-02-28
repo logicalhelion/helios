@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 use strict;
 use warnings;
@@ -8,10 +8,11 @@ use Getopt::Long;
 use Helios::Service;
 use Helios::Error;
 
-our $VERSION = '2.61';
+our $VERSION = '2.72_0950';
 
 # CHANGES:
 # [LH] 2013-08-04: Changed service instantiation to use new Helios::Config API.
+# [LH] [2014-02-28]:  Changed shebang line to use env instead of /usr/bin/perl
 
 =head1 NAME
 

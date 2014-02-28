@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 use 5.008;
 use strict;
@@ -7,7 +7,7 @@ use warnings;
 use Helios::Job;
 use Helios::Config;
 
-our $VERSION = '2.71_4770';
+our $VERSION = '2.72_0950';
 
 # CHANGES:
 # 2012-01-22: Minor changes to comments.
@@ -18,6 +18,7 @@ our $VERSION = '2.71_4770';
 # --verbose and --no-validate
 # [LH] [2013-11-24]: Added new --verbose and jobtype documentation to POD.  
 # Removed old code already commented out.
+# [LH] [2014-02-28]: Changed shebang line to use env instead of /usr/bin/perl.
 
 =head1 NAME
 

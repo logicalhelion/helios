@@ -9,7 +9,7 @@ use Helios::ObjectDriver::DBI;
 use Helios::Error;
 use Helios::Error::ObjectDriverError;
 
-our $VERSION = '2.71_4051';
+our $VERSION = '2.72_0950';
 
 =head1 NAME
 
@@ -41,8 +41,6 @@ designed to be instantiated and thus provides only class methods.
  debug
  set/getConfig
  set/getDriver
-
-#[] need more data here
 
 =cut
 

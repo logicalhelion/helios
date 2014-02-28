@@ -12,7 +12,7 @@ use Helios::ObjectDriver::DBI;
 use Helios::ConfigParam;
 use Helios::Error::ConfigError;
 
-our $VERSION = '2.71_4770';
+our $VERSION = '2.72_0950';
 
 =head1 NAME
 
@@ -169,7 +169,8 @@ sub getServiceName {
     no strict 'refs';
     return $$var;	
 }
-
+sub setService { setServiceName(@_); }
+sub getService { getServiceName(@_); }
 
 my $Driver;
 sub setDriver {
@@ -578,7 +579,7 @@ sub parseConfDb {
 
 
 
-=head2 getParam(param => $param_name [, service_name => $service_name] [, hostname => $hostname])
+=head2 getParam(param => $param_name [, service => $service_name] [, hostname => $hostname])
 
 Given a service name, parameter name, and (optionally) a hostname, getParam() 
 returns the parameter name's value to the calling routine.
@@ -595,7 +596,7 @@ sub getParam {
 	} else {
 		%params = @_;		
 	}
-	my $service_name = defined($params{service_name}) ? $params{service_name} : $self->getServiceName;
+	my $service_name = defined($params{service}) ? $params{service} : $self->getServiceName;
 	my $param_name   = $params{param};
 	my $host         = defined($params{hostname}) ? $params{hostname} : $self->getHostname();
 	my $conf = {};
@@ -653,7 +654,7 @@ sub getParam {
 	return $conf->{$param_name};
 }
 
-# should this be here?  Decide before release candidate phase. #[]
+# this is officially *undocumented*
 sub getAllParams {
 	my $self = shift;	
 	my $conf_all_hosts = {};
@@ -691,7 +692,7 @@ service in a collective, set the hostname to '*'.
 sub setParam {
 	my $self = shift;
 	my %params = @_;
-	my $service_name = defined($params{service_name}) ? $params{service_name} : $self->getServiceName;
+	my $service_name = defined($params{service}) ? $params{service} : $self->getServiceName;
 	my $param_name   = $params{param};  
 	my $host         = defined($params{hostname}) ? $params{hostname} : $self->getHostname;   
 	my $value        = $params{value};
@@ -758,7 +759,7 @@ sub setParam {
 }
 
 
-=head2 unsetParam(param => $param_name [, service_name => $service_name] [, hostname => $hostname,])
+=head2 unsetParam(param => $param_name [, service => $service_name] [, hostname => $hostname,])
 
 Given a service name, parameter name, and (optionally) a hostname, unsetParam() 
 deletes that parameter's entry in the Helios collective database.  
@@ -772,7 +773,7 @@ hostname to '*'.
 sub unsetParam {
 	my $self = shift;
 	my %params = @_;
-	my $service_name = defined($params{service_name}) ? $params{service_name} : $self->getServiceName;
+	my $service_name = defined($params{service}) ? $params{service} : $self->getServiceName;
 	my $param_name   = $params{param};   
 	my $host         = defined($params{hostname}) ? $params{hostname} : $self->getHostname;
 	my $cp;
@@ -871,7 +872,7 @@ Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2012-3 by Logical Helion, LLC.
+Copyright (C) 2012-4 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,
