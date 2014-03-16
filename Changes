@@ -1,113 +1,111 @@
-Revision history for Perl extension Helios.
-2.72_0950  Fri Feb 28 16:36:48 2014
-	HELIOS 2.80 RELEASE CANDIDATE 1
-	-Resolved service/service_name inconsistency in Helios::Config 
-	 API.  Accessor method is set/getService, and the 
-	 get/set/unsetParam methods take 'service' as a parameter.  The
-	 set/getServiceName() methods are retained for backward 
-	 compatibility. 
-	-Changed WORKER_LAUNCH_PATTERN names to be more descriptive:
-	 linear, dynmaic, optimistic.  As before, linear is the default.
-	-Filled gaps in Helios::Configuration guide and helios.pl POD.
-	-Updated copyright info.
-2.71_4770  Sun Nov 24 21:39:28 2013
-	- Removed .pl extension from all new commands.
-	- Helios::Config->setParam(): fix so false values can be set.
-	- helios.pl: tweaks to database reconnect code.
-	- helios.pl: changes to command line option parsing so multiple 
-	  jobtypes can be specified with multiple --jobtypes options.
-	- helios.pl: removed all use Error-based try {} catch {} blocks. 
-	  This will allow future Helios versions to use exceptions based 
-	  on Exception::Class rather than Error.
-	- Helios::TheSchwartz has been removed; Helios::TS has completely 
-	  replaced it.
-2.71_4460  Sat Nov  2 13:36:52 2013
-	Minor changes and fixes to new commands:
-	- helios_config_get.pl: fixed problem with not returning param 
-	  values set in helios.ini.
-	- helios_config_set.pl: fixed problem with setting param values 
-	  that evaluate to false.
-	- helios_config_unset.pl: changed output to make it more 
-	  consistent with the other new commands.
-	- helios_job_status.pl, helios_job_info.pl: specifying --jobid
-	  no longer required; the first arg is assumed to be the jobid.
-	- helios_job_submit.pl: -v and -n now work in addition 
-	  to --verbose and --no-validate.
-	- helios_service_status.pl: separated service version to its own 
-	  line in output.  Added '--epoch-time' option to report time in 
-	  epoch seconds instead of localtime() format.
-2.71_4350  Fri Oct 25 23:23:29 2013
-	- NEW helios_service_status.pl - report service status.
-	- NEW helios_job_status.pl - report job exitstatus (if completed).
-	- NEW helios_job_info.pl - report job metainfo, args, and log msgs.
-	- helios_config_*.pl:  added documentation.
-	- Helios::Config - fixed warning using getParam().
-2.71_4250  Fri Oct 18 16:21:46 2013
-	- Helios::Config:
-	  - NEW set/get/unsetParam() methods to more easily work 
-	    with individual config parameters in the HELIOS_PARAMS_TB
-	    table.
-	  - NEW helios_config_*.pl commands to make Helios config params 
-	    more accessible to shell scripts and other utilities.
-	  - parseConfDb(): combined the 2 separate database queries
-	    into 1 to reduce database calls when config is updated.
-	  - separated Helios config parameter documentation into
-	    Helios::Configuration POD.
- 	- Helios::Service:
-	  - Added JobLockInterval() functionality to control the 
-	    amount of time jobs are locked from a Helios API.  Previously,
-	    the only way to control the amount of time jobs were locked 
-	    was to override TheSchwartz::Worker's grab_for() method.
-	  - Changed hostname lookup handling to reduce the number of calls
-	    to Sys::Hostname::hostname().  
-	- helios.pl:
-	  - Changed cmd line option handling so --help and --version work
-	    again.
-	  - Added startup message to report the dsn of the collective
-	    database helios.pl is connected to.
-	  - Replaced most Error module-based try {} blocks with eval {}
-	  - Updated POD with new cmd options and referenced 
-	    Helios::Configuration.
-	- Helios::Job - replaced usage of Helios::TheSchwartz with the 
-	  new Helios::TS class.
-	- Helios::JobType - added debug() accessor method. 
-	- Makefile.PL:  Added all helios_config_*.pl commands above and
-	  helios_jobtype_add.pl to EXE_FILES.  Removed old LICENSE line.
-2.71_4051  Fri Oct  4 23:24:16 2013
-	- Added code for "virtual jobtypes" - jobtypes w/o a service 
-	  class.  Allows a service to handle jobs of multiple jobtypes 
-	  without creating new service classes.
-	- NEW Helios::ObjectDriver class to improve driver init 
-	  handling.
-	- NEW Helios::JobType class to represent jobtypes; there should 
-	  no longer be a need to use TheSchwartz::FuncMap directly.
-	- NEW Helios::TS and Helios::TS::Job to:
-	  - replace Helios::TheSchwartz as a full-featured TheSchwartz
-	    subclass.
-	  - implement virtual jobtypes.
-	  - fix [RT79690] by dumping Helios::TS::Job objects w/o arg() 
-	    values before they are passed to the higher Helios layers.
-	- NEW helios_jobtype_add.pl to handle adding new jobtypes from 
-	  the command line.
-	- helios.pl:
-	  - now handles @ARGV completely differently to support virtual 
-	    jobtype specification and add other options in future.
-	  - uses Helios::TS instead of Helios::TheSchwartz
-	- Helios::Service:
-	  - new, better constructor 
-	  - ton of NEW methods to support virtual jobtypes:
-	    set/getJobType()
-	    addAltJobType()
-	    set/getAltJobTypes() 
-	    set/getAltJobtypeids()
-	    addAltJobtypeid() 
-	    lookupAltJobtypeids()
-	    lookupJobtypeid()
-	  - jobsWaiting(): rewritten to support multiple, "virtual" 
-	    jobtypes
-2.71_3860  Sat Sep 21 19:27:36 2013
-	- Added PRIORITIZE_JOBS feature.
-	- Added WORKER_LAUNCH_PATTERN feature.
+Revision history for Perl distribution Helios.
+
+2.80  Sat Mar 15 21:19:36 2014
+
+	[New Features]
+	- New Jobtype System:  Before Helios 2.80, the jobtype of a job 
+	  had to be the same name as the service class that ran the job. 
+	  If you had a service class you wanted to run multiple jobtypes,
+	  name a jobtype something different than the service class, or 
+	  divide a workload in a complex way, you had to create multiple 
+	  service classes by creating empty subclasses of your service 
+	  class. This could lead to a lot of boilerplate code to generate
+	  and manage. With the new Helios::JobType class and 
+	  helios_jobtype_add command, new jobtypes can be created as 
+	  necessary for your jobs, and the new --jobtypes option of 
+	  helios.pl allows your service to work with whatever jobtype(s) 
+	  you need, regardless of the service's name. This also eliminates
+	  the need for the HELIOS_CLASS_MAP table, a virtually 
+	  undocumented feature only used by the submitJob.pl CGI. This 
+	  separation of services and jobtypes will also allow more advanced
+	  job queuing features in the future. 
+	- Worker Launch Patterns:  Previous versions of Helios launched 
+	  workers to service jobs in a one-at-time manner.  With Helios 
+	  2.80, the algorithm used to determine the number of workers to
+	  launch is configurable, with 3 algorithms to choose from: 
+	  "linear", "dynamic", and "optimistic". "Linear" is the old, 
+	  one-at-time algorithm. The "dynamic" pattern attempts to keep 
+	  as many workers running as there are available jobs in the queue,
+	  adjusting the number of workers launched based on available job 
+	  count. The "optimistic" pattern launches as many workers as there
+	  are available jobs in the queue, regardless of the number of 
+	  workers already running (limited by the MAX_WORKERS limit). The
+	  default is "linear" for backward compatibility reasons. Most 
+	  Helios services should work well with the "dynamic" pattern, and
+	  it has been extensively tested in production environments. The 
+	  "optimistic" pattern, while theoretically spooling up workers the
+	  fastest, is best used with services with large numbers of jobs of
+	  short duration (1-2 sec or less), as shared resources could be 
+	  taxed and job contention may result. See the 
+	  Helios::Configuration POD for more information.
+	- New Commands:  New shell commands greatly reduce the need to 
+	  consult the Helios::Panoptes web interface or touch the Helios
+	  database directly with SQL commands: 
+	  helios_config_get/set/unset 
+	  helios_job_status 
+	  helios_job_info 
+	  helios_service_status 
+	  Additionally, the new helios_config_import command allows you to 
+	  bulk-import configuration parameters from an INI-style config 
+	  file, easing deployment of services with lots of config params. 
+	- Helios::TS:  Helios no longer relies directly on TheSchwartz job
+	  queuing system, but on its own Helios::TS superset system.  This
+	  allows new Helios-specific features to be added (including some 
+	  of the changes listed above).
+	- Helios::Service->JobLockInterval():  This new method allows your
+	  service to specify the amount of time jobs are locked in the job 
+	  queue. This was previously set at 1 hour unless you reached into
+	  the TheSchwartz layer and redefined the grab_for() setting, which
+	  caused problems if you wanted to use MaxRetries() and 
+	  RetryInterval() to retry failed problems more frequently than 
+	  once an hour.  If you wish to retry failed jobs more frequently 
+	  than once an hour, define a JobLockInterval() method in your 
+	  service class with the same value as your RetryInterval(). 
+	  ALWAYS REMEMBER to make sure these intervals always allow enough
+	  time to complete or fail a job; otherwise, two different workers
+	  can end up running the same job simultaneously. 
+	- Helios::Config:  New get/set/unsetParam() methods retrieve 
+	  individual config parameter values for a service, instead of 
+	  having to retrieve the entire configuration hash. These are 
+	  primarily used in the helios_config_* shell commands, but can be 
+	  used by your own programs and scripts to access Helios config 
+	  parameters outside of Helios services. 
+	- Job Prioritization:  Normally with the Helios::TS job queuing 
+	  system, workers pull jobs from the job queue at random to reduce
+	  job contention between workers.  Using the PRIORITIZE_JOBS config
+	  parameter and Helios::Job->setPriority() method, you can set 
+	  priorities for jobs.  Due to the way Helios::TS works, this will
+	  not be a strict "one-after-the-other" priority, but still can be
+	  used in a general sense to give a job or group of jobs a higher
+	  chance of being run before another group of jobs.
+
+	[Other Improvements] 
+	- Helios::Config:  Improvements have reduced the number of database
+	  queries by 50%.  Additionally, a new get/setService() accessor 
+	  method has been added for consistency; the old 
+	  get/setServiceName() methods are deprecated but retained for 
+	  backward compatibility. 
+	- Helios::Job:  The Helios::Job API also receives some cleanup with
+	  the addition of 3 new accessor pairs: 
+	  get/setArgString() - replaces get/setArgXML() 
+	  get/setJobType() - replaces get/setFuncname() 
+	  get/setJobtypeid() - replaces get/setFuncid() 
+	  These new methods keep Helios::Job consistent with the rest of 
+	  the Helios system and also allow for future changes. As with the
+	  Helios::Config changes, the old methods are deprecated but 
+	  retained for backward compatibility. 
+	- helios_job_submit.pl:  Added the --verbose option to echo the 
+	  jobid of the job if job submission was successful. Echoing the 
+	  jobid by default could cause backward compatibility problems, so
+	  it was decided to add an option instead. This behavior will most 
+	  likely become the default in Helios 3.0. 
+	- Bugfix for [RT79690] - A patch to prevent this bug from causing 
+	  lost jobs was incorporated into Helios 2.61, but a full fix 
+	  required a change at the job queuing layer (and thus required 
+	  Helios::TS).  As mentioned previously in the Helios 2.61 Changes 
+	  and the bug's RT thread, if you have experienced this bug you 
+	  should also upgrade your DBD:: driver module as well. 
+	  
 2.61  Fri Sep 13 20:02:14 2013
 	- Helios 2.61 is a bugfix release:
 	- helios.pl: Fix for [RT81709].

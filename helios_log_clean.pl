@@ -8,7 +8,7 @@ use Getopt::Long;
 use Helios::Service;
 use Helios::Error;
 
-our $VERSION = '2.72_0950';
+our $VERSION = '2.80';
 
 # CHANGES:
 # [LH] 2013-08-04: Changed service instantiation to use new Helios::Config API.

@@ -10,7 +10,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::ObjectDriver::DBI;	#[] change to H::OD later
 
-our $VERSION = '2.72_0950';
+our $VERSION = '2.80';
 
 our $Debug = 0;
 our $Help_Mode = 0;

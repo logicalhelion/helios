@@ -10,7 +10,7 @@ use Helios::ObjectDriver;
 use Helios::Error;
 use Helios::Error::JobTypeError;
 
-our $VERSION = '2.72_0950';
+our $VERSION = '2.80';
 
 =head1 NAME
 

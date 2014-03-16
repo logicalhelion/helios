@@ -19,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::TS;
 use Helios::Config;
 
-our $VERSION = '2.72_0950';
+our $VERSION = '2.80';
 
 # FILE CHANGE HISTORY
 # [2012-01-08]: Added a check to try to prevent loading code outside of @INC.

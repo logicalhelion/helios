@@ -9,7 +9,7 @@ use Helios::ObjectDriver::DBI;
 use Helios::Error;
 use Helios::Error::ObjectDriverError;
 
-our $VERSION = '2.72_0950';
+our $VERSION = '2.80';
 
 =head1 NAME
 

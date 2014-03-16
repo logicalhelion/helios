@@ -4,11 +4,11 @@ use 5.008;
 use strict;
 use warnings;
 use Getopt::Long;
-use Sys::Hostname;
+use Sys::Hostname ();
 
 use Helios::Service;
 
-our $VERSION = '2.72_0950';
+our $VERSION = '2.80';
 
 our $Service_Name = '';
 our $Hostname     = '';
@@ -17,7 +17,7 @@ our $OPT_Epoch_Time = 0;
 
 GetOptions(
 	"service=s"  => \$Service_Name,
-	"hostname=s" => \$Hostname,
+	"H|hostname=s" => \$Hostname,
 	"epoch-time" => \$OPT_Epoch_Time, 
 	"help"       => \$Help_Mode,
 );
@@ -57,9 +57,15 @@ if ($Service_Name) {
 	push(@placeholders, $Service_Name);
 }
 
-if ($Hostname) {
+if ($Hostname && $Hostname ne '*') {
 	$sql .= ' AND host = ? ';
 	push(@placeholders, $Hostname);
+} elsif ($Hostname eq '*'){
+	# do nothing
+} else {
+	# --hostname wasn't specified, default to the localhost
+	$sql .= ' AND host = ? ';
+	push(@placeholders, Sys::Hostname::hostname());	
 }
 
 my $rs;

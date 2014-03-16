@@ -2,7 +2,7 @@ package Helios;
 
 use 5.008000;
 
-our $VERSION = '2.72_0950';
+our $VERSION = '2.80';
 
 # 2011-12-07: Added Andrew Johnson copyright notices.
 # 2012-01-04: Reset all line length limits to 80.  

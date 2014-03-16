@@ -19,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::JobType;
 use Helios::Error::JobTypeError;
 
-our $VERSION = '2.72_0950';
+our $VERSION = '2.80';
 
 # FILE CHANGE HISTORY:
 # [2011-12-07]: Updated to support new Helios::Logger API.  Added 
@@ -1476,13 +1476,10 @@ sub run {
 
 The MaxRetries(), RetryInterval(), and JobLockInterval() methods specify to 
 Helios the number of reattempts it should make at running a job and the 
-frequency of those attempts.   
+frequency of those attempts.  If you don't define these, jobs will not be 
+retried if they fail.
 
-control how many times a job should be retried if it fails and 
-how long the system should wait before a retry is attempted.  If you don't 
-defined these, jobs will not be retried if they fail.
-
-MaxRetries() is straightforward; set it to the number of times we want a job 
+MaxRetries() is straightforward; set it to the number of times you want a job 
 to be retried if it fails.
 
 RetryInterval() is the amount of time (in seconds) to wait after a job fails 

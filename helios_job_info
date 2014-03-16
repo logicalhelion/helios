@@ -11,7 +11,7 @@ use Helios::JobHistory;
 use Helios::TS::Job;
 use Helios::JobType;
 
-our $VERSION = '2.72_0950';
+our $VERSION = '2.80';
 
 our $OPT_JOBID = '';
 our $OPT_ARGS  = 0;

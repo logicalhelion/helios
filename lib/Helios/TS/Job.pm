@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use base 'TheSchwartz::Job';
 
-our $VERSION = "2.72_0950";
+our $VERSION = "2.80";
 
 # FILE CHANGE HISTORY
 # (This code is modified from the original TheSchwartz::Job.pm where noted.)

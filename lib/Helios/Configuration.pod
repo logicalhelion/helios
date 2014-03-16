@@ -227,7 +227,7 @@ DEFAULT:  0
 
 =head2 WORKER_LAUNCH_PATTERN
 
- WORKER_LAUNCH_PATTERN=prog
+ WORKER_LAUNCH_PATTERN=dynamic
 
 In order to service jobs, the helios.pl daemon launches worker processes that 
 instantiate your service class and pass the service object the job(s) to 
