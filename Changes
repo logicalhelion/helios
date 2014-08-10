@@ -1,5 +1,25 @@
 Revision history for Perl distribution Helios.
 
+2.801_3270  Sun Aug 10 13:00:19 2014
+	- Added helios_jobtype_info command.
+	- Added -H as a shortcut for --hostname for all helios_config_* 
+	  commands.  The helios_service_status command already had this
+	  option.
+	- helios_config_set - helios_config_set now issues a response
+	  message if the config parameter was set successfully. 
+	- Helios::Logger - added get/setService accessor methods to help
+	  clarify the service/job/jobtype relationship.  Even though the
+	  original accessors are names get/setJobType, the information 
+	  being recorded is actually the service name.  Helios::Logger 
+	  classes can get jobtype information from the Helios::Job 
+	  object itself (that's what Helios::Logger::Internal does).  The 
+	  old get/setJobType() methods will continue to work identically,
+	  but will be deprecated in the next major release.
+	- Helios::Config - updated POD to remove all mention of the old 
+	  get/setServiceName() accessor pair to reduce confusion.
+	- Helios::Job - added get/setPriority accessor methods, which were 
+	  mistakenly left out of release 2.80.  
+
 2.80  Sat Mar 15 21:19:36 2014
 
 	[New Features]

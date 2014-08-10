@@ -8,7 +8,7 @@ use Helios::Job;
 use Helios::Error::LoggingError;
 use Helios::ObjectDriver::DBI;
 
-our $VERSION = '2.60';
+our $VERSION = '2.801_3270';
 
 =head1 NAME
 
@@ -98,6 +98,16 @@ sub getJobType {
     no strict 'refs';
     return $$var; 
 }
+
+# BEGIN CODE Copyright (C) 2014 by Logical Helion, LLC.
+sub setService {
+	setJobType(@_);
+}
+sub getService {
+	getJobType(@_);
+}
+# END CODE Copyright (C) 2014 by Logical Helion, LLC.
+
 
 sub setHostname {
     my $var = $_[0]."::Hostname";
@@ -192,6 +202,9 @@ Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
 =head1 COPYRIGHT AND LICENSE
 
 Copyright (C) 2009-12 by Andrew Johnson
+
+Portions of this software, where noted, are
+Copyright (C) 2014 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

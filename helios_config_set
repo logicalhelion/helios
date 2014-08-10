@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.80';
+our $VERSION = '2.801_3270';
 
 our $Service_Name;
 our $Param_Name;
@@ -25,7 +25,7 @@ our $Config;
 GetOptions (
 	"service=s"  => \$Service_Name,
 	"param=s"    => \$Param_Name,
-	"hostname=s" => \$Host,
+	"H|hostname=s" => \$Host,
 	"value=s"    => \$Value,
 	"help"       => \$Help_Mode,
 	"debug"      => \$Debug_Mode
@@ -72,9 +72,7 @@ eval {
 	exit(1);
 };
 
-if ($Debug_Mode) {
-	print "SERVICE: $Service_Name HOST: $Host PARAM: $Param_Name set to VALUE: $Value\n";
-}
+print "Service: $Service_Name Host: $Host Param: $Param_Name SET.\n";
 
 exit(0);
 
@@ -89,8 +87,8 @@ helios_config_set - set a config param's value in the Helios database
    [--hostname=<hostname>]
    
  # set the "endpoint_url" param for MyService on all hosts
- helios_config_set --service=MyService --hostname=* --param=endpoint_url \
-   --value=http://webserver/app.pl
+ # (-H is a shortcut for --hostname)
+ helios_config_set -s MyService -H=* -p endpoint_url -v http://webserver/app.pl
    
  # set the "port" param for MyService on the current host
  helios_config_set --service=MyService --param=port --value=8080

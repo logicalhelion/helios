@@ -12,7 +12,7 @@ use Helios::ObjectDriver::DBI;
 use Helios::ConfigParam;
 use Helios::Error::ConfigError;
 
-our $VERSION = '2.80';
+our $VERSION = '2.801_3270';
 
 =head1 NAME
 
@@ -24,24 +24,24 @@ Helios::Config - base class for Helios configuration system
  # a particular conf file and host
  use Helios::Config;
  Helios::Config->init(
-     CONF_FILE => '/path/to/helios.ini',
-     HOSTNAME  => 'host',
-     SERVICE   => 'ServiceName'
+     conf_file => '/path/to/helios.ini',
+     hostname  => 'host',
+     service   => 'ServiceName'
  );
  my $config = Helios::Config->parseConfig();
  
  # if $HELIOS_INI env var is set and current host is used
  use Helios::Config;
- Helios::Config->init(SERVICE => 'ServiceName');
+ Helios::Config->init(service => 'ServiceName');
  my $config = Helios::Config->parseConfig();
  
  # same as above; parseConfig() will automatically call init()
  use Helios::Config;
- my $config = Helios::Config->parseConfig(SERVICE => 'ServiceName');
+ my $config = Helios::Config->parseConfig(service => 'ServiceName');
  
  # you can also use accessor methods; for example, with Helios::TestService:
  use Helios::Config;
- Helios::Config->setServiceName('Helios::TestService');
+ Helios::Config->setService('Helios::TestService');
  Helios::Config->init();
  my $config = Helios::Config->parseConfig();
 
@@ -50,7 +50,7 @@ Helios::Config - base class for Helios configuration system
  use Helios::Config;
  my $config;
  eval {
- 	Helios::Config->init(SERVICE => 'Helios::TestService');
+ 	Helios::Config->init(service => 'Helios::TestService');
  	$config = Helios::Config->parseConfig();
  } or do {
  	my $E = $@;
@@ -104,7 +104,7 @@ from data in the environment.
                           -defaults to $HELIOS_INI env variable
  set/getHostname()        hostname the Helios service is running on
                           -defaults to results of Sys::Hostname::hostname()
- set/getServiceName()     name of the running Helios service
+ set/getService()         name of the running Helios service
                           -defaults to undefined, which will cause the
                            resulting config to contain the contents of the 
                            helios.ini [global] section only
@@ -412,7 +412,7 @@ Given an optional conf file and an optional service name, parseConfFile()
 parses the conf file and returns the resulting hashref to the calling routine.  
 It also makes the hashref available via the getConfFileConfig() accessor.  
 If either the conf file or the service is not specified, the values from the 
-getConfFile() and/or getServiceName accessor(s) are used.  The conf file 
+getConfFile() and/or getService() accessor(s) are used.  The conf file 
 location is set by init() to the value of the $HELIOS_INI environment variable 
 unless otherwise specified.
 
@@ -506,7 +506,7 @@ The parseConfDb() method queries the Helios collective database for
 configuration parameters matching the specified service name and hostname and 
 returns a hashref with those parameters to the calling routine.  If the service 
 name and hostname are not specified, the values returned from the 
-getServiceName() and getHostname() accessors are used.  The getHostname() value 
+getService() and getHostname() accessors are used.  The getHostname() value 
 is normally set by init() to the value returned by Sys::Hostname::hostname() 
 unless otherwise specified.
 

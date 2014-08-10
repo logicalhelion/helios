@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.80';
+our $VERSION = '2.801_3270';
 
 our $Service_Name;
 our $Param_Name;
@@ -25,7 +25,7 @@ our $Value;
 GetOptions (
 	"service=s"  => \$Service_Name,
 	"param=s"    => \$Param_Name,
-	"hostname=s" => \$Host,
+	"H|hostname=s" => \$Host,
 	"help"       => \$Help_Mode,
 	"debug"      => \$Debug_Mode
 );
@@ -89,6 +89,10 @@ helios_config_get - get a config parameter's value from the Helios collective da
 
  # get the value of the "endpoint_url" param for MyService on the current host
  helios_config_get --service=MyService --param=endpoint_url
+
+ # get the global MAX_WORKERS setting for MyService 
+ # (-H is a shortcut for --hostname)
+ helios_config_get -s MyService -H=* -p MAX_WORKERS 
 
 =head1 DESCRIPTION
 

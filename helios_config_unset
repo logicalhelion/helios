@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.80';
+our $VERSION = '2.801_3270';
 
 our $Service_Name;
 our $Param_Name;
@@ -25,7 +25,7 @@ our $Value;
 GetOptions (
 	"service=s"  => \$Service_Name,
 	"param=s"    => \$Param_Name,
-	"hostname=s" => \$Host,
+	"H|hostname=s" => \$Host,
 	"help"       => \$Help_Mode,
 	"debug"      => \$Debug_Mode
 );
@@ -100,11 +100,12 @@ parameters for a service from the Helios collective database.  This allows
 Helios configuration parameters to be deleted from the command line 
 or shell scripts. 
 
-If the --hostname parameter is not specifed, helios_config_unset will default 
-to the current host.  If you want a parameter to be removed for a service 
-across an entire collective, set the --hostname parameter to '*'.  WARNING:  
-Be careful with deleting parameters with --hostname=* as you will deleting the 
-parameter for every instance of your service in the entire collective! 
+If the --hostname (or -H) parameter is not specifed, helios_config_unset will 
+default to the current host.  If you want a parameter to be removed for a 
+service across an entire collective, set the --hostname parameter to '*'.  
+WARNING:  Be careful with deleting parameters with --hostname=* as you will 
+deleting the parameter for every instance of your service in the entire 
+collective! 
 
 =head1 AUTHOR
 

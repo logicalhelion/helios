@@ -16,7 +16,7 @@ require XML::Simple;
 use Helios::Error;
 use Helios::JobHistory;
 
-our $VERSION = '2.80';
+our $VERSION = '2.801_3270';
 
 our $D_OD_RETRIES = 3;
 our $D_OD_RETRY_INTERVAL = 5;
@@ -41,6 +41,8 @@ our $D_OD_RETRY_INTERVAL = 5;
 # set/getJobtypeid() methods; set/getArgXML(), set/getFuncname(), 
 # set/getFuncid() will be deprecated in Helios 3.x.  Changed POD to document 
 # the new functions.  
+# [LH] [2014-08-10] Added get/setPriority() methods.
+
 
 =head1 NAME
 
@@ -143,6 +145,17 @@ sub setJobtypeid { setFuncid(@_) }
 sub getJobtypeid { getFuncid(@_) }
 # END CODE Copyright (C) 2013 by Logical Helion, LLC.
 
+# BEGIN CODE Copyright (C) 2014 by Logical Helion, LLC.
+sub setPriority {
+	my $self = shift;
+	my $p = shift;
+	$self->job()->priority($p);
+}
+sub getPriority {
+	my $self = shift;
+	$self->job()->priority();
+}
+# END CODE Copyright (C) 2014 by Logical Helion, LLC.
 
 =head1 METHODS
 
@@ -669,7 +682,7 @@ Portions of this software, where noted, are
 Copyright (C) 2012 by Andrew Johnson.
 
 Portions of this software, where noted, are
-Copyright (C) 2013 by Logical Helion, LLC.
+Copyright (C) 2013-4 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,
