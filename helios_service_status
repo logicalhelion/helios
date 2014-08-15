@@ -8,7 +8,7 @@ use Sys::Hostname ();
 
 use Helios::Service;
 
-our $VERSION = '2.80';
+our $VERSION = '2.801_3350';
 
 our $Service_Name = '';
 our $Hostname     = '';
@@ -80,7 +80,11 @@ eval {
 
 foreach (@$rs) {
 	print 'Service: ',$_->[0],"\n";
-	print 'Version: ',$_->[1],"\n";
+	if (!defined($_->[1]) || $_->[1] eq '') {
+		print "Version: (none)\n";
+	} else {
+		print 'Version: ',$_->[1],"\n";
+	}
 	print 'Host: ',$_->[2],"\n";
 	print 'PID: ',$_->[3],"\n";
 	print "Online Since: ", $OPT_Epoch_Time ? $_->[4] : scalar localtime($_->[4]),"\n";
