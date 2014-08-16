@@ -1,14 +1,13 @@
 Revision history for Perl distribution Helios.
 
-3.801_3350  Fri Aug 15 18:54:44 2014
-	- helios_service_status:  Fix for [RT94095].  If a service does 
-	  not report a status, helios_service_status will display '(none)'
-	  in the Version: field.
-2.801_3270  Sun Aug 10 13:00:19 2014
+2.81  Sat Aug 16 08:17:30 2014
 	- Added helios_jobtype_info command.
 	- Added -H as a shortcut for --hostname for all helios_config_* 
 	  commands.  The helios_service_status command already had this
 	  option.
+	- helios_service_status:  Fix for [RT94095].  If a service does 
+	  not report a status, helios_service_status will display '(none)'
+	  in the Version: field.
 	- helios_config_set - helios_config_set now issues a response
 	  message if the config parameter was set successfully. 
 	- Helios::Logger - added get/setService accessor methods to help

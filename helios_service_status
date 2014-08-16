@@ -8,7 +8,7 @@ use Sys::Hostname ();
 
 use Helios::Service;
 
-our $VERSION = '2.801_3350';
+our $VERSION = '2.81';
 
 our $Service_Name = '';
 our $Hostname     = '';

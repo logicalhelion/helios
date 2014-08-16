@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.801_3270';
+our $VERSION = '2.81';
 
 our $Service_Name;
 our $Param_Name;
