@@ -28,7 +28,7 @@ helios_job_submit.pl - Submit a job to the Helios job processing system from the
 
  helios_job_submit.pl [--verbose] [--no-validate] I<jobclass> [I<jobargs>]
 
- helios_job_submit.pl MyService "<job>params><myarg1>myvalue1</myarg1></params></job>"
+ helios_job_submit.pl MyService "<job><params><myarg1>myvalue1</myarg1></params></job>"
 
  helios_job_submit.pl --help
 
