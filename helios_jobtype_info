@@ -12,7 +12,7 @@ use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 use Helios::JobType;
 
-our $VERSION = '2.81';
+our $VERSION = '2.811_3460';
 
 our $Help_Mode  = 0;
 our $Debug_Mode = 0;
@@ -94,10 +94,15 @@ helios_jobtype_info - Get info about a jobtype from the Helios collective databa
  # jobtypes can be looked up by jobtypeid also
  helios_jobtype_info --jobtypeid=2 
 
+ # if you have a jobtype's name, you can drop the '--name=' portion
+ helios_jobtype_info MyService
+
 =head1 DESCRIPTION
 
-Use the helios_jobtype_info command to #[]
-
+Use the helios_jobtype_info command to view information on a particular Helios 
+jobtype.  This command allows you to find out the jobtypeid of a jobtype (or 
+vice versa) without resorting to querying the collective database directly with 
+SQL commands.
 
 =head1 SEE ALSO
 

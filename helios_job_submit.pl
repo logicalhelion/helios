@@ -7,7 +7,7 @@ use warnings;
 use Helios::Job;
 use Helios::Config;
 
-our $VERSION = '2.80';
+our $VERSION = '2.811_3460';
 
 # CHANGES:
 # 2012-01-22: Minor changes to comments.

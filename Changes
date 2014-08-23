@@ -1,5 +1,9 @@
 Revision history for Perl distribution Helios.
 
+2.811_3460  Sat Aug 23 13:01:27 2014
+	- Documentation updates to helios_job_submit.pl (thanks @jscook!) 
+	  and helios_jobtype_info.
+
 2.81  Sat Aug 16 08:17:30 2014
 	- Added helios_jobtype_info command.
 	- Added -H as a shortcut for --hostname for all helios_config_* 
