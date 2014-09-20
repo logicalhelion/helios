@@ -69,3 +69,4 @@ sql/helios_schema_mysql.sql
 sql/helios_schema_oracle.sql
 t/1.t
 t/2.t
+META.json                                Module JSON meta-data (added by MakeMaker)

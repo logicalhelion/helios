@@ -7,7 +7,7 @@ use warnings;
 use Helios::Job;
 use Helios::Config;
 
-our $VERSION = '2.811_3460';
+our $VERSION = '2.811_3850';
 
 # CHANGES:
 # 2012-01-22: Minor changes to comments.
@@ -19,6 +19,8 @@ our $VERSION = '2.811_3460';
 # [LH] [2013-11-24]: Added new --verbose and jobtype documentation to POD.  
 # Removed old code already commented out.
 # [LH] [2014-02-28]: Changed shebang line to use env instead of /usr/bin/perl.
+# [LH] [2014-09-19]: Changed validateParamsXML() to return undef if the job 
+# arguments do not validate.  [RT98845]
 
 =head1 NAME
 
@@ -28,7 +30,7 @@ helios_job_submit.pl - Submit a job to the Helios job processing system from the
 
  helios_job_submit.pl [--verbose] [--no-validate] I<jobclass> [I<jobargs>]
 
- helios_job_submit.pl MyService "<job><params><myarg1>myvalue1</myarg1></params></job>"
+ helios_job_submit.pl MyService "<job>params><myarg1>myvalue1</myarg1></params></job>"
 
  helios_job_submit.pl --help
 
@@ -161,8 +163,9 @@ sub validateParamsXML {
 	} or do {
 		my $E = $@;
 		warn("Invalid job arguments: $arg (", $E->text(),")\n");
+		return undef;
 	};
-
+	return 1;
 }
 
 

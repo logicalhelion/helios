@@ -1,33 +1,33 @@
---- #YAML:1.0
-name:               Helios
-version:            2.71_4770
-abstract:           A system for distributed job processing applications.
+---
+abstract: 'A system for distributed job processing applications.'
 author:
-    - Andrew Johnson <lajandy at cpan dotorg>
-license:            perl
-distribution_type:  module
-configure_requires:
-    ExtUtils::MakeMaker:  0
+  - 'Andrew Johnson <lajandy at cpan dotorg>'
 build_requires:
-    ExtUtils::MakeMaker:  0
-requires:
-    Config::IniFiles:    2.38
-    Data::ObjectDriver:  0.04
-    DBI:                 1.52
-    Error:               0.17
-    Pod::Usage:          0.01
-    Test::Simple:        0.72
-    TheSchwartz:         1.04
-    XML::Simple:         2.14
-resources:
-    bugtracker:  https://rt.cpan.org/Public/Dist/Display.html?Name=Helios
-    homepage:    http://helios.logicalhelion.org
-    repository:  git://github.com/logicalhelion/helios.git
-no_index:
-    directory:
-        - t
-        - inc
-generated_by:       ExtUtils::MakeMaker version 6.57_05
+  ExtUtils::MakeMaker: 0
+configure_requires:
+  ExtUtils::MakeMaker: 0
+dynamic_config: 1
+generated_by: 'ExtUtils::MakeMaker version 6.94, CPAN::Meta::Converter version 2.120351'
+license: perl
 meta-spec:
-    url:      http://module-build.sourceforge.net/META-spec-v1.4.html
-    version:  1.4
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Helios
+no_index:
+  directory:
+    - t
+    - inc
+requires:
+  Config::IniFiles: 2.38
+  DBI: 1.52
+  Data::ObjectDriver: 0.04
+  Error: 0.17
+  Pod::Usage: 0.01
+  Test::Simple: 0.72
+  TheSchwartz: 1.04
+  XML::Simple: 2.14
+resources:
+  bugtracker: https://rt.cpan.org/Public/Dist/Display.html?Name=Helios
+  homepage: http://helios.logicalhelion.org
+  repository: git://github.com/logicalhelion/helios.git
+version: 2.811_3460

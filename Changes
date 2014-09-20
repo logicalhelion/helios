@@ -1,5 +1,9 @@
 Revision history for Perl distribution Helios.
 
+2.811_3850  Fri Sep 19 22:19:18 2014
+	- Helios::Config - fix for [RT98284].
+	- helios_job_submit.pl - fix for [RT98845].
+	
 2.811_3460  Sat Aug 23 13:01:27 2014
 	- Documentation updates to helios_job_submit.pl (thanks @jscook!) 
 	  and helios_jobtype_info.
