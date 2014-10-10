@@ -1,10 +1,15 @@
 package Helios::Error::InvalidArg;
 
+use 5.008;
+use strict;
+use warnings;
 use base qw(Helios::Error::BaseError);
 
-our $VERSION = '2.61';
+our $VERSION = '2.811_4150';
 
 # 2011-12-18:  Changed base class from Error::Simple to Helios::Error::BaseError.
+# [2014-10-10] [LH]: Added 5.008, strict, and warnings pragmas for Kwalitee 
+# ratings.
 
 1;
 __END__;

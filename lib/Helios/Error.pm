@@ -1,5 +1,9 @@
 package Helios::Error;
 
+use 5.008;
+use strict;
+use warnings;
+
 use Helios::Error::BaseError;
 
 use Helios::Error::Warning;
@@ -10,12 +14,16 @@ use Helios::Error::DatabaseError;
 use Helios::Error::InvalidArg;
 use Helios::Error::LoggingError;
 use Helios::Error::ConfigError;
+use Helios::Error::JobTypeError;
+use Helios::Error::ObjectDriverError;
 
-our $VERSION = '2.60';
+our $VERSION = '2.811_4150';
 
 # FILE CHANGE HISTORY
 # 2011-12-18: Added new Helios::Error::BaseError and LoggingError classes.
 # 2012-07-28: Added new Helios::Error::ConfigError class.
+# [2014-10-10] [LH]: Added JobTypeError and ObjectDriverError classes.  Added 
+# '5.008', 'strict' and 'warnings' pragmas for Kwalitee ratings.
 
 1;
 

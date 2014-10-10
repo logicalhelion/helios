@@ -1,10 +1,11 @@
 package Helios::Error::ObjectDriverError;
 
+use 5.008;
 use strict;
 use warnings;
 use base 'Helios::Error::BaseError';
 
-our $VERSION = '2.80';
+our $VERSION = '2.811_4150';
 
 1;
 __END__

@@ -1,5 +1,13 @@
 Revision history for Perl distribution Helios.
 
+2.811_4150  Fri Oct 10 13:43:07 2014
+	- Helios::Error - Added JobTypeError and ObjectDriverError to the list of
+	  loaded exceptions.
+	- Helios::Error::* - Added 5.008, strict, and warnings pragmas for 
+	  Kwalitee.
+	- Refactored eg/ examples to use Helios::App::* namespace, 
+	  preventing CPAN namespace pollution.
+
 2.811_3850  Fri Sep 19 22:19:18 2014
 	- Helios::Config - fix for [RT98284].
 	- helios_job_submit.pl - fix for [RT98845].

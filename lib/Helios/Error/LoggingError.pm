@@ -1,8 +1,11 @@
 package Helios::Error::LoggingError;
 
+use 5.008;
+use strict;
+use warnings;
 use base qw(Helios::Error::BaseError);
 
-our $VERSION = '2.40';
+our $VERSION = '2.811_4150';
 
 1;
 __END__;

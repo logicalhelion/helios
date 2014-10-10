@@ -1,17 +1,16 @@
 cgi-bin/submitJob.pl
 Changes
-eg/MP3IndexerService-1.00/Changes
-eg/MP3IndexerService-1.00/lib/MP3IndexerService.pm
-eg/MP3IndexerService-1.00/LICENSE
-eg/MP3IndexerService-1.00/Makefile.PL
-eg/MP3IndexerService-1.00/MANIFEST
-eg/MP3IndexerService-1.00/META.yml
-eg/MP3IndexerService-1.00/mp3submit4index.pl
-eg/MP3IndexerService-1.00/README
-eg/MP3IndexerService-1.00/sql/config.sql
-eg/MP3IndexerService-1.00/sql/schema.sql
-eg/MP3IndexerService-1.00/t/MP3IndexerService.t
-eg/StubService.pm
+eg/Helios-App-MP3IndexerService/Changes
+eg/Helios-App-MP3IndexerService/config.sh
+eg/Helios-App-MP3IndexerService/lib/Helios/App/MP3IndexerService.pm
+eg/Helios-App-MP3IndexerService/LICENSE
+eg/Helios-App-MP3IndexerService/Makefile.PL
+eg/Helios-App-MP3IndexerService/MANIFEST
+eg/Helios-App-MP3IndexerService/mp3submit4index.pl
+eg/Helios-App-MP3IndexerService/README
+eg/Helios-App-MP3IndexerService/sql/schema.sql
+eg/Helios-App-MP3IndexerService/t/Helios-App-MP3IndexerService.t
+eg/Helios-App-Stub/Stub.pm
 helios.ini
 helios.pl
 helios_config_get
@@ -62,6 +61,7 @@ lib/Helios/Tutorial.pod
 LICENSE
 Makefile.PL
 MANIFEST			This list of files
+META.json			Module JSON meta-data (added by MakeMaker)
 META.yml			Module meta-data (added by MakeMaker)
 README
 README.pod
