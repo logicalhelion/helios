@@ -1,6 +1,10 @@
 package Bundle::Helios;
 
-$VERSION = "2.60";
+use 5.008;
+use strict;
+use warnings;
+
+our $VERSION = "2.82";
 
 1;
 

@@ -1,20 +1,21 @@
 Revision history for Perl distribution Helios.
 
-2.811_4150  Fri Oct 10 13:43:07 2014
-	- Helios::Error - Added JobTypeError and ObjectDriverError to the list of
-	  loaded exceptions.
-	- Helios::Error::* - Added 5.008, strict, and warnings pragmas for 
-	  Kwalitee.
+2.82  Fri Oct 17 22:08:18 2014
+	- Helios::Config - fix for [RT98284].  The getParam() method did 
+	  not take the given host into account when deciding whether to 
+	  retrieve a parameter value from the database or just use the 
+	  cached version.
+	- helios_job_submit.pl - fix for [RT98845].  The 
+	  validateParamsXML() function was not returning undef if the 
+	  XML arguments did not validate.  
+	- Helios::Error - Added JobTypeError and ObjectDriverError to the
+	  list of loaded exceptions.
+	- Helios::Error::*, Bundle::Helios - Added 5.008, strict, and 
+	  warnings pragmas for Kwalitee.
+	- Documentation updates to helios_job_submit.pl (thanks @jscook!),
+	  helios_jobtype_info, helios_service_status
 	- Refactored eg/ examples to use Helios::App::* namespace, 
 	  preventing CPAN namespace pollution.
-
-2.811_3850  Fri Sep 19 22:19:18 2014
-	- Helios::Config - fix for [RT98284].
-	- helios_job_submit.pl - fix for [RT98845].
-	
-2.811_3460  Sat Aug 23 13:01:27 2014
-	- Documentation updates to helios_job_submit.pl (thanks @jscook!) 
-	  and helios_jobtype_info.
 
 2.81  Sat Aug 16 08:17:30 2014
 	- Added helios_jobtype_info command.

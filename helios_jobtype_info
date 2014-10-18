@@ -12,7 +12,7 @@ use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 use Helios::JobType;
 
-our $VERSION = '2.811_3460';
+our $VERSION = '2.82';
 
 our $Help_Mode  = 0;
 our $Debug_Mode = 0;

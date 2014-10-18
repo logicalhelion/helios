@@ -5,10 +5,10 @@ use strict;
 use warnings;
 use base qw(Helios::Error::BaseError);
 
-our $VERSION = '2.811_4150';
+our $VERSION = '2.82';
 
 # 2011-12-18:  Changed base class from Error::Simple to Helios::Error::BaseError.
-# [2014-10-10] [LH]: Added 5.008, strict, and warnings pragmas for Kwalitee 
+# [LH] [2014-10-10]: Added 5.008, strict, and warnings pragmas for Kwalitee 
 # ratings.
 
 

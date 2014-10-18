@@ -8,7 +8,7 @@ use Sys::Hostname ();
 
 use Helios::Service;
 
-our $VERSION = '2.81';
+our $VERSION = '2.82';
 
 our $Service_Name = '';
 our $Hostname     = '';
@@ -106,18 +106,22 @@ helios_service_status - check the status of services running in a Helios collect
 
  helios_service_status [--service=<service name>] [--hostname=<hostname>] [--epoch-time]
  
- # list status of all service instances running in collective
+ # list status of all service instances running on current host
  helios_service_status 
  
  # list status of all service instances running on host wrkhost1
  helios_service_status --hostname=wrkhost1
  
+ # list status of all service instances running on all hosts in the collective
+ helios_service_status --hostname=*
+ 
  # list status of all instances of MyService
- helios_service_status --service=MyService
+ # -H is shortcut for --hostname
+ helios_service_status --service=MyService -H=*
 
  # list information on the MyService instance running on wrkhost1
  # report the start and last check in times in epoch seconds
- helios_service_status --service=MyService --hostname=wrkhost1 --epoch-time
+ helios_service_status -s MyService -H wrkhost1 --epoch-time
 
 =head1 DESCRIPTION
 

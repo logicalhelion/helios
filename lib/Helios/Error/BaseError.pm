@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use base qw(Error::Simple);
 
-our $VERSION = '2.811_4150';
+our $VERSION = '2.82';
 
 1;
 __END__
