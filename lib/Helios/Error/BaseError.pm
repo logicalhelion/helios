@@ -1,15 +1,16 @@
 package Helios::Error::BaseError;
 
-use 5.008;
+use 5.008008;
 use strict;
 use warnings;
-use base qw(Error::Simple);
+use parent 'Exception::Class::Base';
 
-our $VERSION = '2.82';
+our $VERSION = '2.90_0000';
+
+sub text { $_[0]->error() }
 
 1;
 __END__
-
 
 =head1 NAME
 
@@ -30,10 +31,13 @@ You can distinguish between Helios errors and other exceptions attempting to
 catch Helios::Error::BaseError rather than each specific class in the 
 Helios::Error hierarchy.
 
-Helios::Error::BaseError is actually a subclass of Error::Simple from the 
-Error CPAN distribution.  You can use the try/catch features of the Error 
-module, the Perl built-in eval syntax, or another module with exception 
-handling features to utilize Helios::Error::BaseError and its subclasses.
+Previously in Helios 2.x, Helios exceptions were based on Error::Simple from 
+the L<Error> distribution.  In Helios 3.x, Helios::Error::BaseError (and all 
+exceptions based on it) are based on Exception::Class::Base from the 
+L<Exception::Class> distribution.  
+
+#[] add the text() method?
+
 
 =head1 SEE ALSO
 
@@ -45,7 +49,7 @@ Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2011 by Andrew Johnson.
+Copyright (C) 2014 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

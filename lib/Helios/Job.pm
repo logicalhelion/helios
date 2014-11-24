@@ -1,688 +1,925 @@
 package Helios::Job;
 
-use 5.008000;
+# [LH] [2014-11-16]: Completely replaced the old Helios 2.x class.  This new 
+# class is a complex Helios Foundation Class which uses the other HeFC classes 
+# for many of its functions.
+
+use 5.008;
 use strict;
 use warnings;
 
-use DBI;
-use Error qw(:try);
-# [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
-use Helios::TS;
-use Helios::TS::Job;
-use Helios::ObjectDriver::DBI;
+use XML::Tiny ();
 
-require XML::Simple;
-
-use Helios::Error;
+use Helios::ObjectDriver;
+use Helios::JobType;
 use Helios::JobHistory;
+use Helios::Log;
+use Helios::TS::Job;
+use Helios::Error::JobError;	#[]? load all errors, or just JobError?
 
-our $VERSION = '2.81';
+our $VERSION = '2.90_0000';
 
-our $D_OD_RETRIES = 3;
-our $D_OD_RETRY_INTERVAL = 5;
+use Class::Tiny qw(
+		jobid          
+		jobtypeid     
+		args          
+		jobtype       
+		arg_string     
+		insert_time   
+		complete_time 
+		exitstatus    
 
-# 2011-12-15:  Removed setting $XML::Simple::PREFERRED_PARSER.
-# 2012-01-01:  Changed failed() and failedNoRetry() methods to truncate error 
-# string at 256 chars.  That's the max length of the matching field in the 
-# ERROR table.  Updated copyright info.
-# 2012-03-27:  Documented accessor methods and greatly expanded and updated 
-# JOB SUBMISSION documentation.
-# 2012-04-01:  Added setDriver() and initDriver() methods.  Refactored old 
-# getDriver() into initDriver(), and changed getDriver() to call initDriver().
-# 2012-04-25:  Added deferred() method.
-# [LH] 2012-07-11: submit(): changed to use Helios::TheSchwartz instead of 
-# base TheSchwartz to implement database connection caching.
-# [LH] [2013-09-07] new(): changed to check to see if TheSchwartz::Job object 
-# to new() has an array in arg(), and throw an exception if it doesn't.
-# (It always should, but [RT79690] is preventing that in a tiny number of cases.) 
-# [LH] [2013-10-18] Replaced calls to Helios::TheSchwartz and TheSchwartz::Job
-# with Helios::TS and Helios::TS::Job.
-# [LH] [2013-10-28] Added set/getArgString(), set/getJobType(), 
-# set/getJobtypeid() methods; set/getArgXML(), set/getFuncname(), 
-# set/getFuncid() will be deprecated in Helios 3.x.  Changed POD to document 
-# the new functions.  
-# [LH] [2014-08-10] Added get/setPriority() methods.
+		run_after     
+		locked_until 
+		failures      
+		uniqkey       
+		coalesce      
+		priority      
+
+		_obj      
+		debug     
+		driver    
+		config    
+);
+
+sub JobHistoryClass { 'Helios::JobHistory' }
+sub JobTypeClass { 'Helios::JobType' }
+sub LogClass { 'Helios::Log' }
 
 
-=head1 NAME
+sub BUILD {
+	my ($self, $params) = @_;
 
-Helios::Job - base class for jobs in the Helios job processing system
-
-=head1 DESCRIPTION
-
-Helios::Job is the standard representation of jobs in the Helios framework.  It handles tasks 
-related to the underlying TheSchwartz::Job objects, and provides its own methods for manipulating 
-jobs in the Helios system.
-
-=head1 ACCESSOR METHODS
-
-These accessors allow access to information about an instantiated Helios::Job 
-object:
-
- debug()             whether Debug Mode is enabled or not
- get/setConfig()     Helios configuration passed by the system to the job object
- get/setArgs()       hashref of the job's arguments (interpreted from the arg string)
- get/setArgString()  the raw XML of the job arguments
-
-Several accessors are pass-through accessors to access values in the 
-underlying TheSchwartz::Job object
- 
- get/setJobid()         jobid of the job in the job queue
- get/setFailures()      number of previous failures of the job before current run
- get/setJobtypeid()     jobtypeid value of the job 
- get/setJobType()       jobtype name of the job
- get/setUniqkey()       uniqkey value of the job (see TheSchwartz documentation)
- get/setRunAfter()      current run_after value of the job
- get/setGrabbedUntil()  current grabbed_until value of the job
- get/setCoalesce()      coalesce value of the job (see TheSchwartz documentation)
-
-When running a job, your service class need not access any of these values 
-directly, though the information is available if you need it (for example, 
-to log how many failures your job has encountered before the current run).  
-When submitting a job, several of the set* accessors are needed to set up the
-job before submission; see the section on the submit() method for more 
-information.
-
-=cut
-
-sub setConfig { $_[0]->{config} = $_[1]; }
-sub getConfig { return $_[0]->{config}; }
-
-sub setArgs { $_[0]->{args} = $_[1]; }
-sub getArgs { return $_[0]->{args}; }
-
-sub setJobid { $_[0]->{args} = $_[1]; }
-sub getJobid { return $_[0]->job()->jobid; }
-
-sub setFuncid { return $_[0]->job()->funcid($_[1]); }
-sub getFuncid { return $_[0]->job()->funcid; }
-
-sub setFailures { return $_[0]->job()->failures($_[1]); }
-sub getFailures { return $_[0]->job()->failures; }
-
-sub setFuncname { return $_[0]->job()->funcname($_[1]); }
-sub getFuncname { return $_[0]->job()->funcname; }
-
-sub setUniqkey { return $_[0]->job()->uniqkey($_[1]); }
-sub getUniqkey { return $_[0]->job()->uniqkey; }
-
-sub setRunAfter { return $_[0]->job()->run_after($_[1]); }
-sub getRunAfter { return $_[0]->job()->run_after; }
-
-sub setGrabbedUntil { return $_[0]->job()->grabbed_until($_[1]); }
-sub getGrabbedUntil { return $_[0]->job()->grabbed_until; }
-
-sub setCoalesce { return $_[0]->job()->coalesce($_[1]); }
-sub getCoalesce { return $_[0]->job()->coalesce; }
-
-# BEGIN CODE Copyright (C) 2012 by Andrew Johnson.
-sub setDriver { $_[0]->{driver} = $_[1]; }
-sub getDriver { 
-	if ( defined($_[0]->{driver}) ) {
-		return $_[0]->{driver};
-	} else {
-		return $_[0]->initDriver();
+	# if we were given a basic system object, inflate our object from it
+	# otherwise, our BUILD() is done
+	if ($params->{obj}) {
+		return $self->inflate($params->{obj});
 	}
 }
-# END CODE Copyright (C) 2012 by Andrew Johnson.
 
-sub debug { my $self = shift; @_ ? $self->{debug} = shift : $self->{debug}; }
 
-# these are for direct access to the underlying TheSchwartz::Job object
-sub job { my $self = shift; @_ ? $self->{job} = shift : $self->{job}; }
+sub setArgs {
+	$_[0]->args($_[1]);	
+}
+sub getArgs {
+	$_[0]->args;
+}
 
-sub setArgXML { $_[0]->{argxml} = $_[1]; }
-sub getArgXML { return $_[0]->{argxml}; }
+sub setArgString {
+	$_[0]->arg_string($_[1]);	
+}
+sub getArgString {
+	$_[0]->arg_string();
+}
 
-# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
-sub setArgString { setArgXML(@_) }
-sub getArgString { getArgXML(@_) }
-
-sub setJobType { setFuncname(@_) }
-sub getJobType { getFuncname(@_) }
-
-sub setJobtypeid { setFuncid(@_) }
-sub getJobtypeid { getFuncid(@_) }
-# END CODE Copyright (C) 2013 by Logical Helion, LLC.
-
-# BEGIN CODE Copyright (C) 2014 by Logical Helion, LLC.
-sub setPriority {
+sub setJobType {
+	$_[0]->jobtype($_[1]);	
+}
+sub getJobType {
+	if ( defined($_[0]->jobtype) ) {
+		return $_[0]->jobtype;
+	} elsif ( defined($_[0]->jobtypeid) ) {
+		$_[0]->jobtype( $_[0]->lookup_job_type( $_[0]->jobtypeid )->getName() );
+		return $_[0]->jobtype;
+	} else {
+		return undef;
+	}
+}
+sub lookup_job_type {
 	my $self = shift;
-	my $p = shift;
-	$self->job()->priority($p);
+	my $jobtypeid = @_ ? shift : $self->jobtypeid;
+	Helios::Error::JobError->throw("Helios::Job->lookup_job_type(): A jobtypeid is required.") unless defined($jobtypeid);	
+
+	my $jt = Helios::JobType->lookup(config => $self->config, jobtypeid => $jobtypeid);
+	if ( defined($jt) ) {
+		return $jt;		
+	} else {
+		Helios::Error::JobError("Helios::Job->lookup_job_type(): A jobtype of jobtypeid => $jobtypeid does not exist in the Helios collective database.");
+	}
+}
+
+
+sub setJobtypeid {
+	$_[0]->jobtypeid($_[1]);	
+}
+sub getJobtypeid {
+	$_[0]->jobtypeid;
+}
+
+sub setInsertTime {
+	$_[0]->insert_time($_[1]);	
+}
+sub getInsertTime {
+	$_[0]->insert_time;
+}
+
+sub setPriority {
+	$_[0]->priority($_[1]);	
 }
 sub getPriority {
-	my $self = shift;
-	$self->job()->priority();
+	$_[0]->priority;
 }
-# END CODE Copyright (C) 2014 by Logical Helion, LLC.
 
-=head1 METHODS
+sub setUniqkey {
+	$_[0]->uniqkey($_[1]);	
+}
+sub getUniqkey {
+	$_[0]->uniqkey;
+}
 
-=head2 new($job)
+sub setCoalesce {
+	$_[0]->coalesce($_[1]);	
+}
+sub getCoalesce{
+	$_[0]->coalesce;
+}
+
+sub setCompleteTime {
+	$_[0]->complete_time($_[1]);	
+}
+sub getCompleteTime {
+	$_[0]->complete_time;
+}
+
+sub setExitstatus {
+	$_[0]->exitstatus($_[1]);	
+}
+sub getExitstatus {
+	$_[0]->exitstatus;
+}
+
+
+# secondary methods
+
+sub setRunAfter {
+	$_[0]->run_after($_[1]);	
+}
+sub getRunAfter {
+	$_[0]->run_after;
+}
+
+sub setLockedUntil {
+	$_[0]->locked_until($_[1]);	
+}
+sub getLockedUntil {
+	$_[0]->locked_until;
+}
+
+
+sub setJobid {
+	$_[0]->jobid($_[1]);	
+}
+sub getJobid {
+	$_[0]->jobid;
+}
+
+sub setConfig {
+	$_[0]->config($_[1]);
+}
+sub getConfig {
+	$_[0]->config;
+}
+
+sub setDriver {
+	$_[0]->driver($_[1]);	
+}
+sub getDriver {
+	initDriver(@_);
+}
+sub initDriver {
+	my $self = shift;
+	my $d = Helios::ObjectDriver->getDriver(@_);
+#[]	$self->setDriver($d);
+	return $d;
+}
+
+=head1 OBJECT INITIALIZATION
+
+=head2 inflate()
+
+If a basic system object is passed to new() using the 'obj' parameter, 
+inflate() will be called to expand the basic object into the full Helios
+Foundation Class object.
 
 =cut
 
-sub new {
-	my $caller = shift;
-	my $class = ref($caller) || $caller;
-#	my $self = $class->SUPER::new(@_);
-	my $self = {};
-	bless $self, $class;
+sub inflate {
+	my $self = shift;
+	my $obj = shift;
+	# we were given an object to inflate from
+	$self->_obj( $obj );
 
-	# init fields
-	# [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
-	if ( defined($_[0]) && ref($_[0]) && $_[0]->isa('Helios::TS::Job') ) {
-		$self->job($_[0]);
-# BEGIN CODE COPYRIGHT (C) 2013 LOGICAL HELION, LLC.
-# [LH] [2013-09-07] new(): changed to check to see if TheSchwartz::Job object 
-# to new() has an array in arg(), and throw an exception if it doesn't.
-# (It always should, but [RT79690] is preventing that in a tiny number of cases.) 
-		if ( ref($_[0]->arg()) eq 'ARRAY' ) {
-			my $arg_str = $_[0]->arg()->[0];
-			$self->setArgXML($arg_str);		
+	# we can inflate from 
+	# Helios::TS::Job objects
+	# OR
+	# Helios::JobHistory objects
+	if ( ref($obj) ) {
+		if ( $obj->isa('Helios::TS::Job') ) {
+			$self->inflate_from_ts_job($obj);
+		} elsif ( $obj->isa('Helios::JobHistory') ) {
+			$self->inflate_from_job_history($obj);
 		} else {
-			Helios::Error::DatabaseError->throw("Received job without actual job arguments, probably due to transient database problem [RT79690].");				
-		}
-# END CODE COPYRIGHT (C) 2013 LOGICAL HELION, LLC.
+			Helios::Error::JobError->throw("Cannot inflate a Helios::Job from object of class ". ref($obj));
+		}		
 	} else {
-		# [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
-		my $schwartz_job = Helios::TS::Job->new(@_);
-		$self->job($schwartz_job);
+		Helios::Error::JobError->throw("Cannot inflate a Helios::Job from a non-object.");
 	}
 
 	return $self;
 }
 
-
-=head1 ARGUMENT PROCESSING METHODS
-
-=head2 parseArgXML($xml) 
-
-Given a string of XML, parse it into a mixed hash/arrayref structure.  This uses XML::Simple.
-
-=cut
-
-sub parseArgXML {
+sub inflate_from_ts_job {
 	my $self = shift;
-	my $xml = shift;
-	my $xs = XML::Simple->new(SuppressEmpty => undef, KeepRoot => 1, ForceArray => ['job']);
-	my $args;
-	try {
-		$args = $xs->XMLin($xml);
-	} otherwise {
-		throw Helios::Error::InvalidArg($!);
-	};
-	return $args;
+	my $obj = shift;
+
+	$self->jobid( $obj->jobid()); 
+	$self->jobtypeid($obj->funcid());
+	$self->arg_string($obj->arg()->[0]);
+#[]	$self->failures($obj->failures());
+#[]	$self->jobtype($obj->jobtype());
+	$self->uniqkey($obj->uniqkey());
+	$self->run_after($obj->run_after());
+	$self->locked_until($obj->grabbed_until());
+	$self->coalesce($obj->coalesce());
+#[]	$self->arg_string($obj->arg_string());
+	$self->priority($obj->priority());
+	$self->insert_time($obj->insert_time());
+#[]	$self->complete_time($obj->complete_time());
+#[]	$self->exitstatus($obj->exitstatus());
+
+	my $arg_obj = $self->deserialize_arg_string($self->arg_string); 
+ 	$self->args( $arg_obj->{args} );
+
+	#[] what about:
+	# failures?
+	# jobtype?
+	
+	return $self;
+}
+
+sub inflate_from_job_history {
+	my $self = shift;
+	my $obj = shift;
+	
+	$self->jobid( $obj->jobid ); 
+	$self->jobtypeid( $obj->jobtypeid );
+	$self->arg_string( $obj->args );
+#[]	$self->failures($obj->failures());
+#[]	$self->jobtype($obj->jobtype());
+	$self->uniqkey( $obj->uniqkey );
+	$self->run_after( $obj->run_after );
+	$self->locked_until( $obj->locked_until );
+	$self->coalesce( $obj->coalesce );
+	$self->priority( $obj->priority );
+	$self->insert_time( $obj->insert_time );
+	$self->complete_time( $obj->complete_time() );
+	$self->exitstatus( $obj->exitstatus() );
+
+	#[]?
+	# failures?
+	# jobtype?
+
+	my $arg_obj = $self->deserialize_arg_string($self->arg_string); 
+ 	$self->args( $arg_obj->{args} );
+
+	return $self;	
 }
 
 
-
-=head2 parseArgs()
-
-Call parseArgs() to pick the Helios job arguments (the first element of the job->args() array) 
-from the Schwartz job object, parse the XML into a Perl data structure (via XML::Simple) and 
-return the structure to the calling routine.  
-
-This is really a convenience method created because 
-
- $args = $self->parseArgXML( $job->arg()->[0] );
-
-looks nastier than it really needs to be.
-
-=cut
-
-sub parseArgs {
+sub inflate_from_string {
 	my $self = shift;
-	my $job = $self->job();
-	my $args;
-	my $parsedxml = $self->parseArgXML($job->arg()->[0]);
-	# is this a metajob?
-	if ( defined($parsedxml->{metajob}) ) {
-		# this is a metajob, with full xml syntax (required for metajobs)
-		$args = $parsedxml->{metajob};
-		$args->{metajob} = 1;
-	} elsif ( defined($parsedxml->{job}) ) {
-		# this isn't a metajob, but is a job with full <job> xml syntax
-		# unfortunately, forcing <job> into an array for metajobs adds complexity here
-		$args = $parsedxml->{job}->[0]->{params};
+	my $str = shift;
+	
+	Helios::Error::JobError->throw("Helios::Job->inflate_from_string(): NOT IMPLEMENTED.");
+}
+
+
+sub deserialize_arg_string {
+	my $self = shift;
+	my $argstr = shift;
+	
+	if ( $argstr =~ /^\s*\{/ ) {
+		# JSON args!
+		return $self->deserialize_arg_string_json($argstr);
+	} elsif ( $argstr =~ /^\s*\</ ) {
+		return $self->deserialize_arg_string_xml($argstr);
 	} else {
-		# we'll assume this is the old-style <params> w/o the enclosing <job> section
-		# we'll probably still support this for awhile
-		$args = $parsedxml->{params};
+		Helios::Error::JobError->throw("deserialize_arg_string(): Job arg_string in unrecognized format.");
+	}
+}
+
+
+sub deserialize_arg_string_json {
+	my $self = shift;
+	my $argstr = shift;
+	my $argobj;
+	
+	eval {
+		use JSON::Tiny 'decode_json';
+		local $JSON::Tiny::TRUE = 1;
+		local $JSON::Tiny::FALSE = 0;		
+		$argobj = decode_json($argstr);
+		1;		
+	} or do {
+		my $E = $@;
+		# rethrow JSON::Tiny's error as a JobError
+		Helios::Error::JobError->throw("deserialize_arg_string_json(): $E");
+	};
+	$argobj;
+}
+
+
+sub deserialize_arg_string_xml {
+	my $self = shift;
+	my $argstr = shift;
+	my $argstruct;
+	
+	eval {
+		use XML::Tiny ();
+		my $args = XML::Tiny::parsefile('_TINY_XML_STRING_'.$argstr);
+		unless ($args->[0]->{name} eq 'job') { die("Root element is not 'job'"); }
+		if ( defined $args->[0]->{jobtype} ) {
+    		$argstruct->{jobtype} = $args->[0]->{jobtype};
+		}
+		foreach my $jobsection ( @{ $args->[0]->{content} } ) {
+	    	if ( $jobsection->{name} eq 'jobtype' ) {
+        		$argstruct->{jobtype} = $jobsection->{content}->[0]->{content};
+    		} elsif ( $jobsection->{name} eq 'args' || $jobsection->{name} eq 'params') {
+        		foreach my $argsection ( @{ $jobsection->{content} } ) {
+            		my $name = $argsection->{name};
+            		$argstruct->{args}->{ $name } = $argsection->{content}->[0]->{content};
+        		}
+    		}
+    		# any other sections, ignore
+		}
+		
+		1;
+	} or do {
+		my $E = $@;
+		# rethrow XML::Tiny's error as a JobError
+		Helios::Error::JobError->throw("Helios::Job->deserialize_arg_string_xml(): $E");		
+	};
+
+	$argstruct;
+}
+
+
+sub serialize_args {
+	my $self = shift;
+	my $args = @_ ? shift : $self->getArgs();
+	
+	my $argstr = $self->serialize_args_json($args);
+	
+	$self->setArgString($argstr);	
+	$argstr;	
+}
+
+sub serialize_args_json {
+	my $self = shift;
+	my $argsref = @_ ? shift : $self->getArgs();
+	my $argstr;
+	
+	eval {
+		use JSON::Tiny 'encode_json';
+		local $JSON::Tiny::TRUE = 1;
+		local $JSON::Tiny::FALSE = 0;		
+		$argstr = encode_json($argsref);
+		1;		
+	} or do {
+		my $E = $@;
+		# rethrow JSON::Tiny's error as a JobError
+		Helios::Error::JobError->throw("Helios::Job->serialize_args_json(): $E");
+	};
+	$argstr;
+}
+
+sub serialize_args_xml {
+	my $self = shift;
+	Helios::Error::JobError("not implemented yet");	
+}
+
+
+=head1 CLASS METHODS
+
+=head2 lookup()
+
+
+=cut
+
+sub lookup {
+	my $self = shift;
+	my %params = @_;
+	my $id        = $params{jobid};
+	my $config    = $params{config};
+	my $debug     = $params{debug} || 0;
+	my $drvr;
+	my $obj;
+	
+	# throw an error if we don't have either a jobid
+	unless ($id) {
+		Helios::Error::JobError->throw('Helios::Job->lookup():  A jobid is required.');
+	}
+
+	eval {
+		$drvr = Helios::ObjectDriver->getDriver(config => $config);
+		$obj = $drvr->lookup('Helios::TS::Job' => $id);
+		
+		if (!defined($obj)) {
+			# jobid wasn't in the job queue, look in job history
+			$obj = Helios::JobHistory->lookup(
+				jobid  => $id,
+				config => $config,
+				driver => $drvr,
+			);
+		}
+
+		1;
+	} or do {
+		my $E = $@;
+		Helios::Error::JobError->throw('lookup(): '."$E");
+	};
+	
+	if (defined($obj)) {
+		# we found it!
+		# (add the driver object to the job to make job completion work) #[]
+		$obj->{__driver} = $drvr;
+		return Helios::Job->new(
+			obj    => $obj, 
+			driver => $drvr, 
+			config => Helios::ObjectDriver->getConfig(),
+			debug  => $debug,
+		);		
+	} else {
+		# we didn't find it
+		return undef;
+	}
+}
+
+
+=head1 OBJECT METHODS
+
+=head2 create()
+
+=cut
+
+sub create {
+	my $self = shift;
+	my %params = @_;
+	my $config = $self->getConfig();
+	my $argstr    = $params{arg_string} || $self->getArgString();
+	my $jobtype   = $params{jobtype}    || $self->getJobType();
+	my $jobtypeid = $params{jobtypeid}  || $self->getJobtypeid();
+
+	my $obj;
+
+	unless ( defined($argstr) ) { Helios::Error::JobError->throw("Helios::Job->create():  An arg_string is required to create a job."); }
+	unless ( defined($jobtype) || defined($jobtypeid) ) { 
+		Helios::Error::JobError->throw("Helios::Job->create():  A jobtype or jobtypeid is required to create a job."); 
+	}
+
+	# use pieces of TheSchwartz to create a new job in the job table 
+	# we're *using* TheSchwartz::Job->new_from_array()
+	# we're *replacing* TheSchwartz->insert_job_to_driver()
+	
+	# new_from_array() expects a structure
+	my $arg_struct = [ $argstr ];
+	
+	eval {
+		my $drvr = $self->getDriver(config => $config);
+		$obj = Helios::TS::Job->new_from_array($jobtype, $arg_struct);
+
+		# add the insert_time and funcid (jobtypeid)
+		$obj->insert_time( time() );
+		$obj->funcid( $jobtypeid );
+
+		# insert the job!
+		$drvr->insert($obj);
+		1;
+	} or do {
+		my $E = $@;
+		Helios::Error::JobError->throw("Helios::Job->create(): $E");
+	};
+
+	# use the new Helios::TS::Job object to (re)inflate $self
+	$self->inflate($obj);
+	# the calling routine expects to receive the jobid
+	return $self->getJobid();
+}
+
+
+=head2 remove()
+
+The remove() method deletes a job from the Helios collective database.  
+It returns 1 if successful and throws a Helios::Error::JobError if the 
+removal operation fails.
+
+USE WITH CAUTION.  All Helios jobs, both enqueued and completed, have an
+associated jobtype, and removing a jobtype that still has associated jobs in 
+the system will have unintended consequences!
+
+THROWS:  Helios::Error::JobError if the removal operation fails.
+
+=cut
+
+sub remove {
+	my $self = shift;
+	my $jobid = $self->getJobid();
+	my $drvr;
+	my $r;
+	
+	# we actually need the Helios::TS::Job object here, because we're going to use
+	# D::OD to do the delete operation.
+	unless ($self->{_obj} && $jobid) {
+		Helios::Error::JobError->throw('Helios::Job->remove(): Helios::Job object was not properly initialized; cannot remove.');
 	}
 	
-	$self->setArgs( $args );
-	return $args;
-}
-
-
-=head2 isaMetaJob()
-
-Returns a true value if the job is a metajob and a false value otherwise.
-
-=cut
-
-sub isaMetaJob {
-	my $self = shift;
-	my $args = $self->getArgs() ? $self->getArgs() : $self->parseArgs();
-	if ( defined($args->{metajob}) && $args->{metajob} == 1) { return 1; }
-	return 0;
-}
-
-
-=head1 JOB SUCCESS/FAILURE METHODS
-
-Use these methods to mark jobs as either successful or failed.  
-
-Helios follows the *nix concept of exitstatus:  0 is successful, nonzero is failure.  If you don't 
-specify an exitstatus when you call failed() or failedNoRetry(), 1 will be recorded as the 
-exitstatus.
-
-The completed(), failed(), and failedNoRetry() methods actually return the exitstatus of the job, 
-so completed() always returns 0 and the failed methods return the exitstatus you specified (or 1 
-if you didn't specify one).  This is to facilitate ending of service class run() methods; the 
-caller of a run() method will cause the worker process to exit if a nonzero value is returned.  If 
-you make sure your completed() or failed()/failedNoRetry() call is the last thing you do in your 
-run() method, everything should work fine.
-
-=head2 completed()
-
-Marks the job as completed successfully.  
-
-Successful jobs are marked with exitstatus of zero in Helios job history.
-
-=cut
-
-sub completed {
-	my $self = shift;
-	my $job = $self->job();
-
-	my $retries = 0;
-	RETRY: {
-        try {
-            my $driver = $self->getDriver();
-            my $jobhistory = Helios::JobHistory->new(
-                jobid         => $job->jobid,
-                funcid        => $job->funcid,
-                arg           => $job->arg()->[0],
-                uniqkey       => $job->uniqkey,
-                insert_time   => $job->insert_time,
-                run_after     => $job->run_after,
-                grabbed_until => $job->grabbed_until,
-                priority      => $job->priority,
-                coalesce      => $job->coalesce,
-                complete_time => time(),
-                exitstatus    => 0
-            );
-            $driver->insert($jobhistory);
-        } otherwise {
-            my $e = shift;
-            if ($retries > $D_OD_RETRIES) {
-                throw Helios::Error::DatabaseError($e->text);		
-            } else {
-                $retries++;
-                sleep $D_OD_RETRY_INTERVAL;
-                next RETRY;
-            }
-        };
-	}
-	$job->completed();
-	return 0;
-}
-
-
-=head2 failed([$error][, $exitstatus])
-
-Marks the job as failed.  Allows job to be retried if the job's service class supports it.  
-Returns the exitstatus recorded for the job (if it wasn't given, it defaults to 1).
-
-=cut
-
-sub failed {
-	my $self = shift;
-	my $error = shift;
-	my $exitstatus = shift;
-	my $job = $self->job();
+	eval {
+		$drvr = $self->getDriver();
+		$drvr->remove($self->{_obj});
+		1;
+	} or do {
+		my $E = $@;
+		Helios::Error::JobError->throw("Helios::Job->remove(): $E");
+	};
 	
-	# this job failed; that means a nonzero exitstatus
-	# if exitstatus wasn't specified (or is zero?), set it to 1
-	if ( !defined($exitstatus) || $exitstatus == 0 ) {
-		$exitstatus = 1;
-	}
-	
-	my $retries = 0;
-	my $retry_limit = 3;
-	RETRY: {
-        try {
-            my $driver = $self->getDriver();
-            my $jobhistory = Helios::JobHistory->new(
-                jobid         => $job->jobid,
-                funcid        => $job->funcid,
-                arg           => $job->arg()->[0],
-                uniqkey       => $job->uniqkey,
-                insert_time   => $job->insert_time,
-                run_after     => $job->run_after,
-                grabbed_until => $job->grabbed_until,
-                priority      => $job->priority,
-                coalesce      => $job->coalesce,
-                complete_time => time(),
-                exitstatus    => $exitstatus
-            );
-            $driver->insert($jobhistory);
-        } otherwise {
-            my $e = shift;
-            if ($retries > $retry_limit) {
-                $job->failed($error, $exitstatus);
-                throw Helios::Error::DatabaseError($e->text);		
-            } else {
-                $retries++;
-                sleep 10;
-                next RETRY;
-            }
-        };
-	}	
-	$job->failed(substr($error,0,254), $exitstatus);
-	return $exitstatus;
+	# signal the calling routine remove was successful 
+	return 1;
 }
 
-
-=head2 failedNoRetry([$error][, $exitstatus])
-
-Marks the job as permanently failed (no more retries allowed).
-
-If not specified, exitstatus defaults to 1.  
-
-=cut
-
-sub failedNoRetry {
-	my $self = shift;
-	my $error = shift;
-	my $exitstatus = shift;
-	my $job = $self->job();
-
-	# this job failed; that means a nonzero exitstatus
-	# if exitstatus wasn't specified (or is zero?), set it to 1
-	if ( !defined($exitstatus) || $exitstatus == 0 ) {
-		$exitstatus = 1;
-	}
-
-	my $retries = 0;
-	my $retry_limit = 3;
-	RETRY: {
-        try {
-            my $driver = $self->getDriver();
-            my $jobhistory = Helios::JobHistory->new(
-                jobid         => $job->jobid,
-                funcid        => $job->funcid,
-                arg           => $job->arg()->[0],
-                uniqkey       => $job->uniqkey,
-                insert_time   => $job->insert_time,
-                run_after     => $job->run_after,
-                grabbed_until => $job->grabbed_until,
-                priority      => $job->priority,
-                coalesce      => $job->coalesce,
-                complete_time => time(),
-                exitstatus    => $exitstatus
-            );
-            $driver->insert($jobhistory);
-        } otherwise {
-            my $e = shift;
-            if ($retries > $retry_limit) {
-                $job->permanent_failure($error, $exitstatus);
-                throw Helios::Error::DatabaseError($e->text);		
-            } else {
-                $retries++;
-                sleep 10;
-                next RETRY;
-            }
-        };
-	}
-
-	$job->permanent_failure(substr($error,0,254), $exitstatus);
-	return $exitstatus;
-}
-
-=head2 deferred()
-
-Defers processing of a job even though it was available for processing in the 
-queue.  The job will be seen as available for processing again when the 
-grabbed_until time has expired (the default is 60 minutes).  If your service 
-employs the job retry API, a declined job run does not count against the job's 
-retry count.
-
-Unlike the completed() and failed*() methods above, deferred() is actually 
-only a wrapper around TheSchwartz 1.10's TheSchwartz::Job->declined() method 
-for now.  No job history is recorded in the HELIOS_JOB_HISTORY_TB in the 
-collective database.  This may change in the future.
-
-=cut
-
-sub deferred {
-	my $self = shift;
-	my $job = $self->job();
-
-	$job->declined();
-	return 0;
-}
-
-
-=head1 JOB SUBMISSION
 
 =head2 submit()
-
-Submits a job to the Helios collective for processing.  Returns the jobid if successful, throws an 
-error if it fails.
-
-Before a job can be successfully submitted, the following must be set first:
-
- $job->setConfig($configHash);
- $job->setArgString($xmlstring);
- $job->setJobType($servicename);
-
-So, for example, to submit a Helios::TestService to the Helios system, you need 
-to do the following:
-
- # you need Helios::Service and Helios::Job
- use Helios::Service;
- use Helios::Job;
-
- # these are the job arguments we want to pass to Helios::TestService
- my $jobxml = "<job><params><string1>This is a test</string1/params>/job>";
-
- # first, use Helios::Service to get the Helios configuration
- my $srv = Helios::Service->new();
- $srv->prep();
- my $config = $srv->getConfig();
- 
- # once you have the config, you can set up the Helios::Job
- my $job = Helios::Job->new();
- $job->setConfig($config);
- $job->setJobType('Helios::TestService');
- $job->setArgString($jobxml);
- 
- # then submit the job (this will throw an exception if something goes wrong)
- my $jobid = $job->submit();
- print "Submitted job $jobid to Helios\n";
- 
-Both Helios::Service->prep() and Helios::Job->submit() will throw exceptions 
-if they encounter errors, so a safer example would catch them:
-
- use Helios::Service;
- use Helios::Job;
-
- my $jobxml = "<job><params><string1>This is a test</string1/params>/job>";
-
- my $srv = Helios::Service->new();
- eval {
- 	$srv->prep();
- 	1;
- } or do {
- 	my $E = $@;
- 	print "Error encountered prepping Helios service: $E\n";
- 	exit(1);
- };
- my $config = $srv->getConfig();
- 
- # once you have the config, you can set up the Helios::Job
- my $job = Helios::Job->new();
- $job->setConfig($config);
- $job->setJobType('Helios::TestService');
- $job->setArgString($jobxml);
- 
- # then submit the job (this will throw an exception if something goes wrong)
- my $jobid;
- eval {
-	$jobid = $job->submit();
- 	1;
- } or do {
-	my $E = $@;
-	print "Error encountered attempting job submission: $E\n"; 	
- };
- print "Submitted job $jobid to Helios\n";
-
-Of course, the Try::Tiny (available on CPAN) would work just as well as an
-eval{} block, and have much prettier syntax.
 
 =cut
 
 sub submit {
 	my $self = shift;
+	my %params = @_;
 	my $config = $self->getConfig();
-	my $params = $self->getArgXML();
-	my $job_class = $self->getFuncname;
+	my $argstr    = $params{arg_string}|| $self->getArgString();
+	my $jobtype   = $params{jobtype}   || $self->getJobType();
+	my $jobtypeid = $params{jobtypeid} || $self->getJobtypeid();
+	my $args      = $params{args}      || $self->getArgs();
+
+	my $obj;
+	my $id;
+
+	# if we don't have an argstring, 
+	# but we do have args,
+	# serialize the args into a string
+	unless ( $argstr || defined($args) ) {
+		Helios::Error::JobError->throw("submit(): Job arguments (either an arg_string or hashref) are required to submit a job."); 
+	}
+	if ( !$argstr ) {
+		$argstr = $self->serialize_args($args);
+		unless ($argstr) { Helios::Error::JobError->throw("submit():  Job arg_string is empty."); }
+	}
 	
-	my $databases = [
-		{   dsn => $config->{dsn},
-			user => $config->{user},
-			pass => $config->{password}
+	
+	# if we have a jobtype but not a jobtypeid, 
+	# use Helios::JobType to lookup the jobtypeid
+	unless ( defined($jobtype) ) { Helios::Error::JobError->throw("submit(): A jobtype is required to submit a job."); }
+	if ( !defined($jobtypeid) ) {
+		my $jt = Helios::JobType->lookup(name => $jobtype);
+		if ( defined($jt) ) {
+			$jobtypeid = $jt->getJobtypeid();
+			$self->setJobtypeid($jobtypeid);			
+		} else {
+			# uh-oh, we have no clue what jobtypeid this is
+			Helios::Error::JobError->throw("submit(): Jobtype $jobtype cannot be found in the Helios collective database.");
 		}
-	];
-
-	my $args = [ $params ];
-
-	# [LH] [2013-10-18] Replaced Helios::TheSchwartz with Helios::TS
-	my Helios::TS $client = Helios::TS->new( databases => $databases, verbose => 1 );
-	my $sjh = $client->insert($job_class, $args);
-	$self->setJobid($sjh->jobid);
-	return $sjh->jobid;
+	}
+	
+	# we should have all we need to create the job in the job queue now
+	eval {
+		$id = $self->create(
+			arg_string => $argstr,
+			jobtype    => $jobtype,
+			jobtypeid  => $jobtypeid,
+		);
+		1;
+	} or do {
+		my $E = $@;
+		Helios::Error::JobError->throw("submit(): $E");
+	};
+	
+	return $id;		
 }
 
 
-=head1 JOB BURSTING
+=head1 JOB COMPLETION METHODS
 
-Metajobs are jobs that specify multiple jobs.  These metajobs will be burst apart by Helios into 
-the constituent jobs, which will be available for processing by any of the workers of the 
-appropriate class in the Helios collective.  Metajobs provide a faster means to submit jobs in 
-bulk to Helios; rather than submit a thousand jobs, your application can submit 1 metajob that 
-will be burst apart by Helios into the thousand constituent jobs, which other workers will process 
-as if they were submitted individually.
-
-Normally, the Helios::Service base class determines whether a job is a metajob or not and can 
-handle the bursting process without intervention from your service subclass.  If you need metajobs 
-to be burst in a way different than from the default, you may need to override 
-Helios::Service->burstJob() in your service class (and possibly create a Helios::Job subclass with 
-an overridden burst() method as well).
-
-=head2 burst()
-
-Bursts a metajob into smaller jobs.  Returns the number of jobs burst if successful.
+=head2 completed()
 
 =cut
 
-sub burst {
+sub completed {
 	my $self = shift;
-	my $job = $self->job();
-	my $args = $self->getArgs();
-	my $xs = XML::Simple->new(SuppressEmpty => undef, ForceArray => [ 'job' ]);
-	my @newjobs;
-	my $classname;
 	
-	# determine the class of the burst jobs
-	# if it wasn't specified, it's the same class as this job
-	if ( defined($args->{class}) ) {
-		$classname = $args->{class};
-	} else {
-		$classname = $job->funcname;
-	}
+	my $jh = $self->JobHistoryClass()->new(
+			jobid          => $self->getJobid(),
+			jobtypeid      => $self->getJobtypeid(),
+			args           => $self->getArgString(),
+			insert_time    => $self->getInsertTime(),
+			priority       => $self->getPriority(),
+			uniqkey        => $self->getUniqkey(),
+			exitstatus     => 0,			
+			run_after      => $self->getRunAfter(),
+			locked_until   => $self->getLockedUntil(),
+			coalesce       => $self->getCoalesce(),
+	);
+	my $jhid = $jh->submit();
 
-	try {
-
-		foreach my $job_arg (@{$args->{jobs}->{job}}) {
-			my $newxml = $xs->XMLout($job_arg, NoAttr => 1, NoIndent => 1, RootName => undef);
-			my $newjob = TheSchwartz::Job->new(
-				funcname => $classname,
-				arg      => [ $newxml ]
-			);
-			push(@newjobs, $newjob);
-		}	
-
-		$job->replace_with(@newjobs);
-
-	} otherwise {
-		my $e = shift;
-		$self->failed($e->text);
-		throw Helios::Error::Fatal($e->text);
-	};
-	$self->completed;
-	
-	# return the number of jobs burst from the meta job here
-	if ($self->debug) {
-		foreach (@newjobs) {
-			print "JOBID: ",$_->jobid,"\n";
+	if ( defined($self->{_obj}) && $self->{_obj}->isa('Helios::TS::Job')) {
+		# OK, we were inflated from a TS job
+		# was it pulled from the job queue, or was a lookup done?
+		if ( !defined( $self->{_obj}->handle() ) ) {
+			# oh crap, it was instantiated from lookup()
+			# we'll have to construct a client and job handle
+			# and hope it all works when we call completed() on it
+			$self->_init_ts_job_handle($self->{_obj});
 		}
+
+		$self->{_obj}->completed();
 	}
-	return scalar(@newjobs);
+
+	# fill in new details
+	#[] we might need to re-inflate here with the JobHistory object instead
+	$self->setExitstatus( $jh->getExitstatus() );
+	$self->setCompleteTime( $jh->getCompleteTime() );
+	
+	# in Helios 3, we'll return the jobhistoryid instead of the exitstatus
+	return $jhid;
+}
+
+
+=head2 failed()
+
+=cut
+
+sub failed {
+	my $self = shift;
+	my $err = shift;
+	my $status = @_ ? shift : 1;
+	
+	my $jh = $self->JobHistoryClass()->new(
+			jobid          => $self->getJobid(),
+			jobtypeid      => $self->getJobtypeid(),
+			args           => $self->getArgString(),
+			insert_time    => $self->getInsertTime(),
+			priority       => $self->getPriority(),
+			uniqkey        => $self->getUniqkey(),
+			exitstatus     => $status,			
+			run_after      => $self->getRunAfter(),
+			locked_until   => $self->getLockedUntil(),
+			coalesce       => $self->getCoalesce(),
+	);
+	my $jhid = $jh->submit();
+
+	if ( defined($self->{_obj}) && $self->{_obj}->isa('Helios::TS::Job')) {
+		# OK, we were inflated from a TS job
+		# was it pulled from the job queue, or was a lookup done?
+		if ( !defined( $self->{_obj}->handle() ) ) {
+			# oh crap, it was instantiated from lookup()
+			# we'll have to construct a client and job handle
+			# and hope it all works when we call completed() on it
+			$self->_init_ts_job_handle($self->{_obj});
+		}
+
+		$self->{_obj}->failed(substr($err,0,254), $status);
+	}
+
+	# fill in new details
+	#[] we might need to re-inflate here with the JobHistory object instead
+	$self->setExitstatus( $jh->getExitstatus() );
+	$self->setCompleteTime( $jh->getCompleteTime() );
+	
+	# in Helios 3, we'll return the jobhistoryid instead of the exitstatus
+	return $jhid;
+}
+
+
+=head2 failed_no_retry()
+
+=cut
+
+sub failed_no_retry {
+	my $self = shift;
+	my $err = shift;
+	my $status = @_ ? shift : 1;
+	
+	my $jh = $self->JobHistoryClass()->new(
+			jobid          => $self->getJobid(),
+			jobtypeid      => $self->getJobtypeid(),
+			args           => $self->getArgString(),
+			insert_time    => $self->getInsertTime(),
+			priority       => $self->getPriority(),
+			uniqkey        => $self->getUniqkey(),
+			exitstatus     => $status,			
+			run_after      => $self->getRunAfter(),
+			locked_until   => $self->getLockedUntil(),
+			coalesce       => $self->getCoalesce(),
+	);
+	my $jhid = $jh->submit();
+
+	if ( defined($self->{_obj}) && $self->{_obj}->isa('Helios::TS::Job')) {
+		# OK, we were inflated from a TS job
+		# was it pulled from the job queue, or was a lookup done?
+		if ( !defined( $self->{_obj}->handle() ) ) {
+			# oh crap, it was instantiated from lookup()
+			# we'll have to construct a client and job handle
+			# and hope it all works when we call completed() on it
+			$self->_init_ts_job_handle($self->{_obj});
+		}
+
+		$self->{_obj}->permanent_failure(substr($err,0,254), $status);
+	}
+
+	# fill in new details
+	#[] we might need to re-inflate here with the JobHistory object instead
+	$self->setExitstatus( $jh->getExitstatus() );
+	$self->setCompleteTime( $jh->getCompleteTime() );
+	
+	# in Helios 3, we'll return the jobhistoryid instead of the exitstatus
+	return $jhid;
+}
+
+
+=head2 deferred() 
+
+=cut
+
+sub deferred {
+	my $self = shift;
+
+	if (defined($self->{_obj}) && $self->{_obj}->isa('Helios::TS::Job')) {
+		$self->{_obj}->declined();
+	}
+
+	return 1;
+}
+
+
+
+sub _init_ts_job_handle {
+	my $self = shift;
+	my $obj = shift;
+	
+	# so this job object was inflated from a Helios::TS::Job
+	# BUT NOT BY Helios::TS.
+	# This means the TheSchwartz::JobHandle object necessary for
+	# completed(), failed(), and failed_permanent() is not present
+	# we'll initialize a JobHandle here (which also means we'll have
+	# to initialize a Helios::TS client object) so the Helios::TS::Job's
+	# job completion methods can work
+
+	#[] dynaload these?	
+	use TheSchwartz::JobHandle;
+	use Helios::TS;
+	#[]use TheSchwartz::Worker;	#[] switch this to Helios::TS::Worker when it's ready
+	use Helios::TS::Worker;
+
+	my $cf = $self->getConfig();
+	my Helios::TS $c = Helios::TS->new(databases => [{ dsn => $cf->{dsn}, user => $cf->{user}, pass => $cf->{password} }]);
+#[]		$c->can_do('TheSchwartz::Worker');
+#[]		$c->{active_worker_class} = 'TheSchwartz::Worker';
+#[]	$obj->{active_worker_class} = 'TheSchwartz::Worker';
+	$obj->{active_worker_class} = 'Helios::TS::Worker';
+	my $hashdsn = $c->shuffled_databases();
+	my TheSchwartz::JobHandle $h = TheSchwartz::JobHandle->new({ dsn_hashed => $hashdsn, jobid => $self->getJobid });
+	$h->client($c);
+	$obj->handle($h);
+	$obj;
 }
 
 
 =head1 OTHER METHODS
 
-=head2 initDriver()
-
-Returns a Data::ObjectDriver object for use with Helios layer database updates.
+=head2 get_job_history()
 
 =cut
 
-# BEGIN CODE Copyright (C) 2012 by Andrew Johnson.
-
-sub initDriver {
+sub get_job_history {
 	my $self = shift;
+	my %params = @_;
+	my $jobid = $params{jobid} || $self->getJobid();
 	my $config = $self->getConfig();
-	if ($self->debug) { print $config->{dsn},$config->{user},$config->{password},"\n"; }
-	my $driver = Helios::ObjectDriver::DBI->new(
-	    dsn      => $config->{dsn},
-	    username => $config->{user},
-	    password => $config->{password}
-	);	
-	if ($self->debug) { print 'Job->initDriver() DRIVER: ',$driver,"\n"; }
-	$self->setDriver($driver);
-	return $driver;	
+
+	my @objs;
+	
+	eval {
+		@objs = $self->JobHistoryClass()->lookup_by_jobid_full(
+			jobid => $jobid,
+			config => $config,
+		);
+		
+		1;
+	} or do {
+		my $E = $@;
+		Helios::Error::JobError->throw("Helios::Job->get_job_history(): $E");
+	};
+	
+	return @objs;
 }
-# END CODE Copyright (C) 2012 by Andrew Johnson.
+
+
+=head2 get_logs()
+
+=cut
+
+sub get_logs {
+	my $self = shift;
+	my %params = @_;
+	my $jobid = $params{jobid} || $self->getJobid();
+	my $config = $self->getConfig();
+
+	my @objs;
+	
+	eval {
+		@objs = $self->LogClass()->lookup_by_jobid_full(
+			jobid => $jobid,
+			config => $config,
+		);
+		
+		1;
+	} or do {
+		my $E = $@;
+		Helios::Error::JobError->throw("Helios::Job->get_logs(): $E");
+	};
+	
+	return @objs;
+}
+
+
+=head2 lock()
+
+=cut
+
+sub lock {
+	my $self = shift;
+	my %params = @_;
+	my $p_locked_until = $params{locked_until};
+	my $p_lock_interval = $params{lock_interval} ? $params{lock_interval} : 10;
+	my $jobid = $self->getJobid();
+	my $drvr;
+	my $r;
+	my $locked_until;
+	my $current;
+		
+	# we actually need the Helios::TS::Job object here, because we're going to use
+	# D::OD to do the operation.
+	unless ($self->{_obj} && $jobid) {
+		Helios::Error::JobError->throw('Helios::Job->lock(): Helios::Job object was not properly initialized; cannot lock.');
+	}
+	# if we were inflated from a JobHistory object, we need to throw an error
+	# because we cannot lock() already completed jobs
+	unless ( $self->{_obj}->isa('Helios::TS::Job') ) {
+		Helios::Error::JobError->throw('Helios::Job->lock(): Cannot lock a job that has already been completed.');
+	}
+
+	unless ($p_locked_until || $p_lock_interval) { 
+		Helios::Error::JobError->throw('Helios::Job->lock(): locked_until or lock_interval is required.'); 
+	}
+
+	eval {
+		$drvr = $self->getDriver();
+		$current = $self->{_obj}->grabbed_until();
+		if ($p_locked_until) {
+			$locked_until = $p_locked_until;
+		} else  {
+			$locked_until = time() + $p_lock_interval;
+		}
+		$self->{_obj}->grabbed_until($locked_until);		
+		$r = $drvr->update($self->{_obj}, { grabbed_until => $current });
+		
+		1;
+	} or do {
+		my $E = $@;
+		Helios::Error::JobError->throw("lock(): $E");
+	};
+
+	# throw an error if the number of rows affected isn't 1
+	unless ($r == 1) {
+		Helios::Error::JobError->throw("Helios::Job->lock(): Job lock attempt unsuccessful.  Another process probably locked it already.");
+	}
+	# update our grabbed_until with the updated value
+	$self->locked_until( $self->{_obj}->grabbed_until() );
+	
+	# signal the calling routine lock was successful 
+	return $r;
+}
 
 
 1;
 __END__
 
 
-=head1 SEE ALSO
-
-L<Helios::Service>, L<Helios::TS>, L<Helios::TS::Job>, L<XML::Simple>
-
 =head1 AUTHOR
 
-Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
+Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2008 by CEB Toolbox, Inc.
-
-Portions of this software, where noted, are
-Copyright (C) 2012 by Andrew Johnson.
-
-Portions of this software, where noted, are
-Copyright (C) 2013-4 by Logical Helion, LLC.
+Copyright (C) 2014 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

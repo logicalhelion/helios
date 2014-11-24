@@ -1,6 +1,6 @@
 package Helios::JobType;
 
-use 5.008;
+use 5.008008;
 use strict;
 use warnings;
 use TheSchwartz::FuncMap;
@@ -10,11 +10,32 @@ use Helios::ObjectDriver;
 use Helios::Error;
 use Helios::Error::JobTypeError;
 
-our $VERSION = '2.80';
+our $VERSION = '2.90_0000';
+
+use Class::Tiny qw(
+	jobtypeid
+	name
+
+	_obj      
+	debug     
+	driver    
+	config    
+);
+
+
+sub BUILD {
+	my ($self, $params) = @_;
+
+	# if we were given a basic system object, inflate our object from it
+	# otherwise, our init() is done
+	if ($params->{obj}) {
+		return $self->inflate($params->{obj});
+	}
+}
 
 =head1 NAME
 
-Helios::JobType - class to represent Helios jobtypes
+Helios::JobType - Helios Foundation Class to represent Helios jobtypes
 
 =head1 SYNOPSIS
 
@@ -30,7 +51,6 @@ Helios::JobType - class to represent Helios jobtypes
  my $newtype = Helios::JobType->new( name => 'NewJobType' );
  $newtype->create();
  print "Created jobtype ",$newtype->getJobtypeid,"\n";
-
 
 =head1 DESCRIPTION
 
@@ -51,31 +71,29 @@ configured to service jobs of several jobtypes.
 
 =cut
 
-sub debug { defined($_[1]) ? $_[0]->{debug} = $_[1] : return $_[0]->{debug} }
-
 sub setName {
-	$_[0]->{name} = $_[1];
+	$_[0]->name( $_[1] );
 }
 sub getName {
-	return $_[0]->{name};
+	$_[0]->name;
 }
 
 sub setJobtypeid {
-	$_[0]->{jobtypeid} = $_[1];	
+	$_[0]->jobtypeid($_[1]);	
 }
 sub getJobtypeid {
-	return $_[0]->{jobtypeid};
+	$_[0]->jobtypeid;
 }
 
 sub setConfig {
-	$_[0]->{config} = $_[1];
+	$_[0]->config($_[1]);
 }
 sub getConfig {
-	return $_[0]->{config};
+	$_[0]->config;
 }
 
 sub setDriver {
-	$_[0]->{driver} = $_[1];	
+	$_[0]->driver($_[1]);	
 }
 sub getDriver {
 	initDriver(@_);
@@ -87,6 +105,7 @@ sub initDriver {
 	return $d;
 }
 
+
 =head1 OBJECT INITIALIZATION
 
 =head2 new([name => $jobtypename][, config => $config_hashref][, driver => $driver_obj][, obj => $elemental_obj])
@@ -94,69 +113,22 @@ sub initDriver {
 Creates a new Helios::JobType object.  If parameters are passed, calls init() 
 with those parameters to initialize the object's values.
 
-=cut
+=head2 inflate()
 
-sub new {
-	my $cl = shift;
-	my $self = {
-		jobtypeid => undef,
-		name      => undef,
-
-		_obj      => undef,
-		debug     => undef,
-		driver    => undef,
-		config    => undef,
-	};
-	bless $self, $cl;
-	$self->init(@_) if @_;
-    return $self;
-}
-
-
-=head2 init()
-
-If any parameters are passed to new(), init() will be called to further 
-initialize the object.
+If a basic system object is passed to new() using the 'obj' parameter, 
+inflate() will be called to expand the basic object into the full Helios
+Foundation Class object.
 
 =cut
 
-sub init {
-	my $self = shift;
-	my %params = @_;
-	# populate any params we were given
-	$self->{debug}     = $params{debug};
-	$self->{name}      = $params{name};
-	$self->{jobtypeid} = $params{jobtypeid};
-	$self->{driver}    = $params{driver};
-	$self->{config}    = $params{config};
-	# if we were given an elemental object, inflate our object from it
-	# otherwise, our init() is done
-	if ($params{obj}) {
-		return $self->_inflate($params{obj});
-	} else {
-		return $self;
-	}	
-}
-
-
-=head2 _inflate()
-
-If an elemental object is passed to new() or init() using the 'obj' parameter, 
-_inflate() will be called to expand the elemental object into the full Helios
-object.
-
-Helios::JobType objects can be inflated from TheSchwartz::FuncMap objects.
-
-=cut
-
-sub _inflate {
+sub inflate {
 	my $self = shift;
 	my $obj = shift;
 	# we were given an object to inflate from
-	$self->{_obj}      = $obj;
-	$self->{name}      = $obj->funcname();
-	$self->{jobtypeid} = $obj->funcid();
-	return $self;
+	$self->_obj($obj);
+	$self->name($obj->funcname);
+	$self->jobtypeid($obj->funcid);
+	$self;
 }
 
 
@@ -257,7 +229,7 @@ sub create {
 		Helios::Error::JobTypeError->throw("create(): $E");
 	};
 	# use the new TheSchwartz::FuncMap object to (re)inflate $self
-	$self->_inflate($obj);
+	$self->inflate($obj);
 	# the calling routine expects to receive the jobtypeid
 	return $self->getJobtypeid;
 }
@@ -303,13 +275,10 @@ sub remove {
 }
 
 
+
+
 1;
 __END__
-
-
-=head1 SEE ALSO
-
-L<Helios>, L<Helios::Service>, L<Helios::Job>
 
 =head1 AUTHOR
 
@@ -317,7 +286,7 @@ Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2013-4 by Logical Helion, LLC.
+Copyright (C) 2014 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,

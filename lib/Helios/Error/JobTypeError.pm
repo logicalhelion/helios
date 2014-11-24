@@ -1,11 +1,11 @@
 package Helios::Error::JobTypeError;
 
-use 5.008;
+use 5.008008;
 use strict;
 use warnings;
-use base 'Helios::Error::BaseError';
+use parent 'Helios::Error::BaseError';
 
-our $VERSION = '2.82';
+our $VERSION = '2.90_0000';
 
 1;
 __END__
@@ -26,17 +26,13 @@ jobtype error occurred
 When the Helios::JobType class encounters a problem, it will throw a 
 JobTypeError exception. 
 
-=head1 SEE ALSO
-
-L<Helios::JobType>, L<Helios::Error>, L<Helios::Error::BaseError>, L<Error> 
-
 =head1 AUTHOR
 
 Andrew Johnson, E<lt>lajandy at cpan dotorgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2013-4 by Logical Helion, LLC.
+Copyright (C) 2014 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,
