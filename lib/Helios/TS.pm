@@ -8,10 +8,11 @@ use fields qw(active_worker_class);        # new fields for this subclass
 use Carp qw( croak );
 use List::Util qw( shuffle );
 use Helios::TS::Job;
+use Helios::TS::Worker; 	#[]
 
 use constant OK_ERRORS => { map { $_ => 1 } Data::ObjectDriver::Errors->UNIQUE_CONSTRAINT, };
 
-our $VERSION = '2.80';
+our $VERSION = '2.90_0000';
 
 # FILE CHANGE HISTORY
 # (This code is modified from the original TheSchwartz.pm where noted.)
@@ -29,6 +30,10 @@ our $VERSION = '2.80';
 # [LH] [2013-10-04]: Fix for Helios bug [RT79690], which appears to be a DBD 
 # problem where a LOB becomes unbound in a query.
 # [LH] [2013-11-24]: Removed old code already commented out. 
+# [LH] [2014-11-23]: work_once(): Changed to call Helios::TS::Worker instead
+# of a TheSchwartz::Worker subclass.  This allows Helios::Service (and 
+# its subclasses) to be completely independent of TheSchwartz.  Added
+# Helios::TS::Worker to the list of used modules.
 
 our $T_AFTER_GRAB_SELECT_BEFORE_UPDATE;
 our $T_LOST_RACE;
@@ -255,7 +260,14 @@ sub work_once {
 	# is supposed to solve, and we're not sure MySQL indexes do anymore either).  
 #    $client->temporarily_remove_ability($class);
 
-    $class->work_safely($job);
+#[]    $class->work_safely($job);
+# BEGIN CODE COPYRIGHT (C) 2014 LOGICAL HELION, LLC.
+	# [LH] [2014-11-23]: Changed work_safely() call to use Helios::TS::Worker
+	# instead of TheSchwartz::Worker.  This allows Helios::TS(::Worker) to be
+	# completely separated from Helios::Service.
+	Helios::TS::Worker->work_safely($class, $job);
+	
+# END CODE COPYRIGHT (C) 2014 LOGICAL HELION, LLC.
 
     ## We got a job, so return 1 so work_until_done (which calls this method)
     ## knows to keep looking for jobs.
@@ -289,7 +301,7 @@ under the same terms as Perl itself.
 
 TheSchwartz comes with no warranty of any kind.
 
-Certain portions of this software, where noted, are Copyright (C) 2012-3 by
+Certain portions of this software, where noted, are Copyright (C) 2012-4 by
 Logical Helion, LLC.  These portions are free software; you can redistribute 
 them and/or modify them under the same terms as Perl itself, either Perl 
 version 5.8.0 or, at your option, any later version of Perl 5 you may have 
