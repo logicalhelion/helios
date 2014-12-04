@@ -3,7 +3,7 @@ package Helios::Service;
 use 5.008;
 use strict;
 use warnings;
-use base qw( TheSchwartz::Worker );
+#[]use base qw( TheSchwartz::Worker );
 use File::Spec;
 use Sys::Hostname;
 use DBI;
@@ -19,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::JobType;
 use Helios::Error::JobTypeError;
 
-our $VERSION = '2.80';
+our $VERSION = '2.90_0000';
 
 # FILE CHANGE HISTORY:
 # [2011-12-07]: Updated to support new Helios::Logger API.  Added 
@@ -124,6 +124,15 @@ our $VERSION = '2.80';
 # deprecated; its function has been replaced by lookupJobtypeid().
 # [LH] [2014-02-28]: Changed max_retries() and retry_delay() to default to zero
 # rather than undef to eliminate some warnings.
+# [LH] [2014-11-23]: Divorced Helios::Service from TheSchwartz::Worker.  Now,
+# Helios::Service is it's own base class, and can be used by other code without
+# carrying around baggage from TheSchwartz.  Removed documentation relating to
+# TheSchwartz.  Modified work() to match new calling signature used by 
+# Helios:TS::Worker.  Added keep_exit_status_for() method to work properly with
+# Helios::TS::Worker.  Modified work() and getJobArgs() to work with new 
+# HeFC Helios::Job.  Also removed deprecated methods and any POD referring to
+# them: getConfigFromIni(), getConfigFromDb(), getFuncidFromDb(), 
+# get/setFuncid().  Updated copyright info.  
 
 =head1 NAME
 
@@ -141,28 +150,7 @@ will be passed a Helios::Job object representing the job to performed.  The run(
 mark the job as completed successfully, failed, or permanently failed (by calling completedJob(),
 failedJob(), or failedJobPermanent(), respectively) before it ends.  
 
-=head1 TheSchwartz HANDLING METHODS
-
-The following 3 methods are used by the underlying TheSchwartz job queuing 
-system to determine what work is to be performed and, if a job fails, how it 
-should be retried.
-
-YOU DO NOT NEED TO TOUCH THESE METHODS TO CREATE HELIOS SERVICES.  These 
-methods manage interaction between Helios and TheSchwartz.  You only need to 
-be concerned with these methods if you are attempting to extend core Helios
-functionality.  
-
-=head2 max_retries()
-
-Controls how many times a job will be retried.  
-
-=head2 retry_delay()
-
-Controls how long (in secs) before a failed job will be retried.  
-
-These two methods should return the number of times a job can be retried if it fails and the 
-minimum interval between those retries, respectively.  If you don't define them in your subclass, 
-they default to zero, and your job(s) will not be retried if they fail.
+=head1 CLASS METHODS
 
 =head2 work()
 
@@ -206,8 +194,12 @@ sub retry_delay { $_[0]->RetryInterval() || 0; }
 # 3600 sec (1 hr).
 sub grab_for { $_[0]->JobLockInterval() || 3600 }
 # END CODE Copyright (C) 2013 by Logical Helion, LLC.
+# BEGIN CODE Copyright (C) 2014 by Logical Helion, LLC.
+sub keep_exit_status_for { 0 }
+# END CODE Copyright (C) 2014 by Logical Helion, LLC.
 
-sub work {
+
+sub __work {
 	my $class = shift;
 	my $schwartz_job = shift;
 # BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
@@ -503,11 +495,6 @@ sub addAltJobtypeid {
 sub setConfig { $_[0]->{config} = $_[1]; }
 sub getConfig { return $_[0]->{config}; }
 
-# [LH] [2013-10-04]: Virtual jobtypes.  Changed set/getFuncid() for 
-# compatibility with set/getJobtypeid().  Set/getFuncid() is DEPRECATED;
-# retained for now for backward compatibility with Helios 2.6x and earlier.
-sub setFuncid { $_[0]->{jobtypeid} = $_[1]; }
-sub getFuncid { return $_[0]->{jobtypeid}; }
 
 sub setIniFile { $_[0]->{inifile} = $_[1]; }
 sub getIniFile { return $_[0]->{inifile}; }
@@ -581,24 +568,7 @@ some of these, primarily the prep() method.
 The prep() method is designed to call all the various setup routines needed to 
 get the service ready to do useful work.  It:
 
-=over 4
-
-=item * 
-
-Pulls in the contents of the HELIOS_DEBUG and HELIOS_INI env vars, and sets the appropriate 
-instance variables if necessary.
-
-=item *
-
-Calls the getConfigFromIni() method to read the appropriate configuration parameters from the 
-INI file.
-
-=item *
-
-Calls the getConfigFromDb() method to read the appropriate configuration parameters from the 
-Helios database.
-
-=back
+#[]
 
 Normally it returns a true value if successful, but if one of the getConfigFrom*() methods throws 
 an exception, that exception will be raised to your calling routine.
@@ -691,116 +661,6 @@ sub prep {
 }
 # END Code Copyright Andrew Johnson.
 
-=head2 getConfigFromIni([$inifile]) DEPRECATED
-
-The getConfigFromIni() method opens the helios.ini file, grabs global params and config params relevant to
-the current service class, and returns them in a hash to the calling routine.  It also sets the class's 
-internal {config} hashref, so the config parameters are available via the getConfig() method.
-
-Typically service classes will call this once near the start of processing to pick up any relevant 
-parameters from the helios.ini file.  However, calling the prep() method takes care of this for 
-you, and is the preferred method.
-
-=cut
-
-sub getConfigFromIni {
-	my $self = shift;
-	my $inifile = shift;
-
-# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
-# getConfigFromIni() is no longer necessary.
-	
-	unless ($INIT_CONFIG_CLASS) {
-		if ( defined($inifile) ) { $self->setIniFile($inifile); }
-		$INIT_CONFIG_CLASS = $self->initConfig();
-	}
-	my $conf = $INIT_CONFIG_CLASS->parseConfFile();
-	$self->setConfig($conf);
-	return %{$conf};
-# END CODE Copyright (C) 2012 by Logical Helion, LLC.
-
-}
-
-
-=head2 getConfigFromDb() DEPRECATED
-
-The getConfigFromDb() method connects to the Helios database, retrieves config params relevant to the 
-current service class, and returns them in a hash to the calling routine.  It also sets the class's 
-internal {config} hashref, so the config parameters are available via the getConfig() method.
-
-Typically service classes will call this once near the start of processing to pick up any relevant 
-parameters from the helios.ini file.  However, calling the prep() method takes care of this for 
-you.
-
-There's an important subtle difference between getConfigFromIni() and getConfigFromDb():  
-getConfigFromIni() erases any previously set parameters from the class's internal {config} hash, 
-while getConfigFromDb() merely updates it.  This is due to the way helios.pl uses the methods:  
-the INI file is only read once, while the database is repeatedly checked for configuration 
-updates.  For individual service classes, the best thing to do is just call the prep() method; it 
-will take care of things for the most part.
-
-=cut
-
-sub getConfigFromDb {
-	my $self = shift;
-	my $params = $self->getConfig();
-
-# BEGIN CODE Copyright (C) 2012 by Logical Helion, LLC.
-# getConfigFromDb() method is no longer necessary.
-
-	unless ($INIT_CONFIG_CLASS) {
-		$INIT_CONFIG_CLASS = $self->initConfig();
-	}
-	my $dbconf = $INIT_CONFIG_CLASS->parseConfDb();
-	while (my ($key, $value) = each %$dbconf ) {
-		$params->{$key} = $value;
-	}
-	$self->setConfig($params);
-	return %{$params};
-# END CODE Copyright (C) 2012 by Logical Helion, LLC.
-
-}
-
-
-=head2 getFuncidFromDb() [DEPRECATED]
-
-Queries the collective database for the funcid of the service class and 
-returns it to the calling routine.  The service name used in the query is the 
-value returned from the getJobType() accessor method.  
-
-This method is most commonly used by helios.pl to get the funcid associated 
-with a particular service class, so it can scan the job table for waiting jobs.
-If their are jobs for the service waiting, helios.pl may launch new worker 
-processes to perform these jobs.
-
-As of Helios 2.80, getFuncidFromDb() has been replaced by lookupJobtypeid().  
-This method is thus deprecated.
-
-=cut
-
-sub getFuncidFromDb {
-    my $self = shift;
-    my $params = $self->getConfig();
-    my $jobtype = $self->getJobType();
-    my @funcids;
-
-    if ($self->debug) { print "Retrieving funcid for ".$self->getJobType()."\n"; }
-
-	eval {
-		my $driver = $self->getDriver();
-		# also get the funcid 
-		my @funcids = $driver->search('TheSchwartz::FuncMap' => { funcname => $jobtype });
-		if ( scalar(@funcids) > 0 ) {
-			$self->setFuncid( $funcids[0]->funcid() );
-		}
-		1;
-	} or do {
-		my $E = $@;
-		Helios::Error::DatabaseError->throw("$E");
-	};
-
-	return $self->getFuncid();	
-}
 
 
 # BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
@@ -1368,7 +1228,7 @@ method and returns its value.
 
 =cut
 
-sub getJobArgs {
+sub __getJobArgs {
 	my $self = shift;
 	my $job = shift;
 	return $job->getArgs() ? $job->getArgs() : $job->parseArgs();
@@ -1595,6 +1455,187 @@ sub _require_module {
 # END CODE Copyright (C) 2012 by Logical Helion, LLC.
 
 
+sub work {
+	my $class = shift;
+#[]	my $schwartz_job = shift;
+# BEGIN CODE Copyright (C) 2014 by Logical Helion, LLC.
+	my %params = @_;
+	my $schwartz_job;
+	if ( defined($params{obj}) ) {
+		$schwartz_job = $params{obj};
+	}
+# END CODE Copyright (C) 2014 by Logical Helion, LLC.
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+	# 2013-08-11: Rewritten job initialization code to catch job init errors, including [RT79690].
+	my $job;
+	my $job_init_error;
+	eval {
+		# turn the schwartz job we were given into: 
+		# a custom job object defined by the app class,
+		# or a basic Helios::Job object if the app didn't specify anything special
+		if ( $class->JobClass() ) {
+			# instantiate a custom job object
+			$job = $class->JobClass()->new(obj => $schwartz_job);	#[]
+		} else {
+			# nothing fancy, just a normal Helios::Job object
+			$job = Helios::Job->new(obj => $schwartz_job);		#[]
+		}
+		1;
+	} or do {
+		# uhoh, there was a problem turning the schwartz job into a Helios job
+		# note that, and when the worker is fully prepped, 
+		# we'll take care of the problem
+		$job_init_error = "$@";
+	};
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
+#[]no	$WORKER_START_TIME = $WORKER_START_TIME ? $WORKER_START_TIME : time();     # for WORKER_MAX_TTL 
+	my $return_code;
+	my $args;
+
+	# instantiate the service class into a worker
+	my $self = new $class;
+	eval {
+	    # if we've previously retrieved a config
+        # AND OVERDRIVE is enabled (1) 
+        # AND LAZY_CONFIG_UPDATE is enabled (1),
+        # AND we're not servicing the 10th job (or technically a multiple of ten)
+        # THEN just retrieve the pre-existing config        
+        if ($self->debug) {
+#[]no	        print "CACHED_CONFIG=",$CACHED_CONFIG,"\n";
+#[]no	        print "CACHED_CONFIG_RETRIEVAL_COUNT=",$CACHED_CONFIG_RETRIEVAL_COUNT,"\n";
+        }
+#[]no        if ( defined($CACHED_CONFIG) && 
+#[]no                $CACHED_CONFIG->{LAZY_CONFIG_UPDATE} == 1 &&
+#[]no                $CACHED_CONFIG->{OVERDRIVE} == 1 &&
+#[]no                $CACHED_CONFIG_RETRIEVAL_COUNT % 10 != 0 
+#[]no            ) {
+#[]no            $self->prep(CACHED_CONFIG => $CACHED_CONFIG);
+#[]no            $CACHED_CONFIG_RETRIEVAL_COUNT++;
+#[]no            if ($self->debug) { $self->logMsg(LOG_DEBUG,"Retrieved config params from in-memory cache"); } 
+#[]no        } else {
+			$self->prep();
+
+			# prep() just parsed the config for us
+			# let's grab the db driver and loggers for use by the next job
+			# (if we're in OVERDRIVE; if we're not, there won't be much effect
+#[]no            if ( defined($self->getConfig()->{LAZY_CONFIG_UPDATE}) && 
+#[]no                    $self->getConfig()->{LAZY_CONFIG_UPDATE} == 1 ) {
+#[]no                $CACHED_CONFIG = $self->getConfig();
+#[]no                $CACHED_CONFIG_RETRIEVAL_COUNT = 1;     # "prime the pump"
+#[]no            }	    
+#[]no        }
+
+# BEGIN CODE Copyright (C) 2013 by Logical Helion, LLC.
+		# 2013-08-11: Rewritten job initialization code to catch job init errors, including [RT79690].
+		# if a job initialization error occurred above,
+		# we want to log the error and then exit the worker process
+		# trying to further job setup and/or run the job is ill-advised,
+		# and if we have to exit the process so TheSchwartz doesn't force the job to failure.
+		# (but we have to wait and do it here so we can properly log the error)
+		if ( defined($job_init_error) ) {
+			if ($self->debug) { print "JOB INITIALIZATION ERROR: ".$job_init_error."\n"; }
+			$self->logMsg(LOG_CRIT, "JOB INITIALIZATION ERROR: $job_init_error");
+			exit(1);
+		}
+# END CODE Copyright (C) 2013 by Logical Helion, LLC.
+	    	    
+		$job->debug( $self->debug );
+		$job->setConfig($self->getConfig());
+# BEGIN CODE Copyright (C) 2011-2012 by Andrew Johnson.
+		$job->setDriver($self->getDriver());
+#[]		$args = $job->parseArgs();
+		1;
+	} or do {
+		my $E = $@;
+		if ( $E->isa('Helios::Error::InvalidArg') ) {
+			$self->logMsg($job, LOG_ERR, "Invalid arguments: $E");
+			$job->failedNoRetry("$E");			
+			exit(1);
+		} elsif ( $E->isa('Helios::Error::DatabaseError') ) {
+			$self->logMsg($job, LOG_ERR, "Database error: $E");
+			$job->failed("$E");
+			exit(1);
+		} else {
+			$self->logMsg($job, LOG_ERR, "Unexpected error: $E");
+			$job->failed("$E");
+			exit(1);
+		}
+	};
+
+	# run the job, whether it's a metajob or simple job
+	$self->setJob($job);
+	eval {
+#[]		if ( $job->isaMetaJob() ) {
+#			# metajob
+#			if ($self->debug) { print 'CALLING METARUN() for metajob '.$job->getJobid()."...\n"; }
+#			$return_code = $self->metarun($job);
+#			if ($self->debug) { print 'METARUN() RETURN CODE: '.$return_code."\n"; }
+#		} else {
+			# must be a simple job then
+			if ($self->debug) { print 'CALLING RUN() for job '. $job->getJobid()."...\n"; }
+			$return_code = $self->run($job);
+			if ($self->debug) { print 'RUN() RETURN CODE: '. $return_code."\n"; }
+#		}
+		1;
+	} or do {
+		my $E = $@;
+		$self->logMsg($job, LOG_CRIT,"Uncaught exception thrown by run() in process ".$$.': '.$E);
+		$self->logMsg($job, LOG_CRIT,'Forcing failure of job '.$job->getJobid().' and exit of process '.$$);
+		$self->failedJob($job, $E, 1);
+		exit(1);
+	};
+
+	# DOWNSHIFT_ON_NONZERO_RUN
+	# previously a nonzero return from run() was taken to mean a failed job, 
+	# and would cause a downshift in OVERDRIVE mode.  This was considered a 
+	# safety feature as it was unknown what caused the job to fail.
+	# But this feature was underdocumented and misunderstood and has been 
+	# removed.  
+	# The new default behavior doesn't pay attention to the value returned
+	# from run() or metarun().  You should mark your job as completed or 
+	# failed in run() or metarun() and not worry about returning anything.
+	# Anyone requiring the old behavior can use the new DOWNSHIFT_ON_NONZERO_RUN
+	# parameter to enable it.
+	if ( defined($self->getConfig()->{DOWNSHIFT_ON_NONZERO_RUN}) &&
+			$self->getConfig()->{DOWNSHIFT_ON_NONZERO_RUN} == 1 && 
+			$return_code != 0
+		) { 
+		exit(1); 
+	}
+# END CODE Copyright (C) 2011-2012 by Andrew Johnson.
+
+	# if we're not in OVERDRIVE, the worker process will exit as soon as work() returns anyway 
+	#    (calling shouldExitOverdrive will be a noop)
+	# if we're in OVERDRIVE, work() will exit and the worker process will call it again with another job
+	# if we were in OVERDRIVE, but now we're NOT, we should explicitly exit() to accomplish the downshift
+	if ( $self->shouldExitOverdrive() ) {
+		$self->logMsg(LOG_NOTICE,"Class $class exited (downshift)");
+		exit(0);
+	}
+
+	# we'll assume if we got here, things went reasonably well
+	# (run() or metarun() succeeded, or it failed and the errors were caught
+	# we're going to return 0 to the calling routine
+	# in normal mode, this will immediately return to launch_worker() in helios.pl
+	#     (which will exit with this return code)
+	# in OVERDRIVE, this will return to TheSchwartz->work_until_done(), which 
+	# will call this work() with another TheSchwartz::Job, over and over again
+	# until it runs out of jobs.  When the jobs are exhausted, then it returns
+	# to launch_worker() in helios.pl (which then exits with this return code)
+	return 0;
+}
+
+# BEGIN CODE Copyright (C) 2014 by Logical Helion, LLC.
+
+sub getJobArgs {
+	my $self = shift;
+	my $job = shift;
+	return $job->getArgs();
+}
+
+# END CODE Copyright (C) 2014 by Logical Helion, LLC.
+
+
 1;
 __END__
 
@@ -1619,7 +1660,7 @@ Portions of this software, where noted, are
 Copyright (C) 2011-2012 by Andrew Johnson.
 
 Portions of this software, where noted, are
-Copyright (C) 2012-3 by Logical Helion, LLC.
+Copyright (C) 2012-4 by Logical Helion, LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,
