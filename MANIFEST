@@ -11,7 +11,6 @@ eg/Helios-App-MP3IndexerService/README
 eg/Helios-App-MP3IndexerService/sql/schema.sql
 eg/Helios-App-MP3IndexerService/t/Helios-App-MP3IndexerService.t
 eg/Helios-App-Stub/Stub.pm
-HeFC_Makefile.PL
 helios.ini
 helios.pl
 helios_config_get
