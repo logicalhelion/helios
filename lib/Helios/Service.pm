@@ -133,6 +133,8 @@ our $VERSION = '2.90_0000';
 # HeFC Helios::Job.  Also removed deprecated methods and any POD referring to
 # them: getConfigFromIni(), getConfigFromDb(), getFuncidFromDb(), 
 # get/setFuncid().  Updated copyright info.  
+# [LH] [2014-12-04]: Changed from using Helios::Logger::Internal to new 
+# Helios::Logger::Default.
 
 =head1 NAME
 
@@ -1073,12 +1075,13 @@ sub logMsg {
 		} or do {
             my $E = $@;
             print "$E\n"; 
-            Helios::Logger::Internal->setConfig($config);
-            Helios::Logger::Internal->setJobType($jobType);
-            Helios::Logger::Internal->setHostname($hostname);
-			Helios::Logger::Internal->setDriver($driver);
-            Helios::Logger::Internal->init();
-            Helios::Logger::Internal->logMsg(undef, LOG_EMERG, $logger.' LOGGING FAILURE: '.$E);
+            # [LH] [2014-12-04]: Changed from using Helios::Logger::Internal to new Helios::Logger::Default.
+            Helios::Logger::Default->setConfig($config);
+            Helios::Logger::Default->setJobType($jobType);
+            Helios::Logger::Default->setHostname($hostname);
+			Helios::Logger::Default->setDriver($driver);
+            Helios::Logger::Default->init();
+            Helios::Logger::Default->logMsg(undef, LOG_EMERG, $logger.' LOGGING FAILURE: '.$E);
 		};			
 	}
 	
@@ -1175,7 +1178,8 @@ sub initLoggers {
     # UNLESS it has been specifically turned off
     unless ( defined($config->{internal_logger}) && 
         ( $config->{internal_logger} eq 'off' || $config->{internal_logger} eq '0') ) {
-    	unshift(@loggers, 'Helios::Logger::Internal');
+        # [LH] [2014-12-04]: Changed from using Helios::Logger::Internal to new Helios::Logger::Default.
+    	unshift(@loggers, 'Helios::Logger::Default');
     }
 
 
@@ -1203,12 +1207,13 @@ sub initLoggers {
             	# our only resort is to use the internal logger
             	my $E = $@;
             	print "$E\n";
-                Helios::Logger::Internal->setConfig($config);
-                Helios::Logger::Internal->setJobType($jobType);
-                Helios::Logger::Internal->setHostname($hostname);
-				Helios::Logger::Internal->setDriver($driver);
-                Helios::Logger::Internal->init();
-            	Helios::Logger::Internal->logMsg(undef, LOG_EMERG, $logger.' CONFIGURATION ERROR: '.$E);
+	            # [LH] [2014-12-04]: Changed from using Helios::Logger::Internal to new Helios::Logger::Default.
+                Helios::Logger::Default->setConfig($config);
+                Helios::Logger::Default->setJobType($jobType);
+                Helios::Logger::Default->setHostname($hostname);
+				Helios::Logger::Default->setDriver($driver);
+                Helios::Logger::Default->init();
+            	Helios::Logger::Default->logMsg(undef, LOG_EMERG, $logger.' CONFIGURATION ERROR: '.$E);
 				# we need to go ahead and rethrow the error to stop the init process
 				Helios::Error::LoggingError->throw($E);
             };

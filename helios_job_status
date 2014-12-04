@@ -5,16 +5,15 @@ use strict;
 use warnings;
 use Getopt::Long;
 
-use Helios::Service;
+use Helios::Job;
 
-our $VERSION = '2.80';
-
-our $Args;
-our @JobHistory;
-our @Logs;
+our $VERSION = '2.90_0000';
 
 our $OPT_JOBID = '';
-our $OPT_HELP    = 0;
+our $OPT_ARGS  = 0;
+our $OPT_LOGS  = 0;
+our $OPT_HELP  = 0;
+our @LOG_PRIORITIES = qw(EMERG ALERT CRIT ERR WARNING NOTICE INFO DEBUG);
 
 # 1st arg is jobid if it doesn't start with -
 if ($ARGV[0] !~ /^-/) {
@@ -37,44 +36,25 @@ unless ($OPT_JOBID) {
 	exit(1);
 }
 
-# this is a little old school, but we'll 
-# instantiate the base Helios::Service to 
-# get a collective database connection
-my $s = Helios::Service->new();
-$s->prep();
-my $dbh = $s->dbConnect();
+my $job;
 
-my @placeholders;
-my $sql = q{
-	SELECT 
-		exitstatus
-	FROM
-		helios_job_history_tb
-	WHERE
-		jobid = ?
-	ORDER BY complete_time DESC
-		
-};
-push(@placeholders, $OPT_JOBID );
-
-my @rs;
 eval {
-	@rs = @{ $dbh->selectall_arrayref($sql, undef, @placeholders) };
+	$job = Helios::Job->lookup(jobid => $OPT_JOBID);
+
 	1;
 } or do {
 	my $E = $@;
-	warn "$0: ERROR: $E\n";
-	exit(1);
+	print STDERR "$0: ERROR: $E\n";
+	exit(1);	
 };
 
-if ( @rs ) {
-	print $rs[0]->[0],"\n";
+if ( defined $job )  {
+	print $job->getExitstatus(),"\n" if defined $job->getExitstatus;	
+	exit(0);
+} else {
+	print "JOBID: $OPT_JOBID not found.\n";
+	exit(1);	
 }
-
-$dbh->disconnect();
-
-
-exit(0);
 
 
 =head1 NAME

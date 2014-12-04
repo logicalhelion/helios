@@ -11,6 +11,7 @@ eg/Helios-App-MP3IndexerService/README
 eg/Helios-App-MP3IndexerService/sql/schema.sql
 eg/Helios-App-MP3IndexerService/t/Helios-App-MP3IndexerService.t
 eg/Helios-App-Stub/Stub.pm
+HeFC_Makefile.PL
 helios.ini
 helios.pl
 helios_config_get
@@ -19,6 +20,7 @@ helios_config_set
 helios_config_unset
 helios_job_info
 helios_job_status
+helios_job_submit
 helios_job_submit.pl
 helios_jobtype_add
 helios_jobtype_info
@@ -39,16 +41,21 @@ lib/Helios/Error/DatabaseError.pm
 lib/Helios/Error/Fatal.pm
 lib/Helios/Error/FatalNoRetry.pm
 lib/Helios/Error/InvalidArg.pm
+lib/Helios/Error/JobError.pm
+lib/Helios/Error/JobHistoryError.pm
 lib/Helios/Error/JobTypeError.pm
 lib/Helios/Error/LoggingError.pm
 lib/Helios/Error/ObjectDriverError.pm
 lib/Helios/Error/Warning.pm
 lib/Helios/Job.pm
 lib/Helios/JobHistory.pm
+lib/Helios/JobHistoryEntry.pm
 lib/Helios/JobType.pm
+lib/Helios/Log.pm
 lib/Helios/LogEntry.pm
 lib/Helios/LogEntry/Levels.pm
 lib/Helios/Logger.pm
+lib/Helios/Logger/Default.pm
 lib/Helios/Logger/Internal.pm
 lib/Helios/MetajobBurstService.pm
 lib/Helios/ObjectDriver.pm
@@ -57,13 +64,19 @@ lib/Helios/Service.pm
 lib/Helios/TestService.pm
 lib/Helios/TS.pm
 lib/Helios/TS/Job.pm
+lib/Helios/TS/Worker.pm
 lib/Helios/Tutorial.pod
 LICENSE
 Makefile.PL
 MANIFEST			This list of files
 README
 README.pod
+sql/HeFC_mysql.sql
+sql/HeFC_oracle.sql
 sql/helios_schema_mysql.sql
 sql/helios_schema_oracle.sql
 t/1.t
 t/2.t
+t/Job.t
+t/JobHistory.t
+t/Log.t

@@ -1,0 +1,200 @@
+#!/usr/bin/env perl
+
+use 5.008;
+use strict;
+use warnings;
+use Getopt::Long;
+
+use JSON::Tiny qw(decode_json);
+$JSON::Tiny::TRUE  = 1;
+$JSON::Tiny::FALSE = 0;
+
+use Helios;
+use Helios::Config;
+use Helios::Job;
+
+our $VERSION = '2.90_0000';
+
+our $OPT_HELP = 0;
+our $OPT_VERBOSE = 0;
+our $OPT_QUIET = 0;
+our $Job_Type = '';
+our $Job_Args = '';
+
+## GET THE COMMAND LINE OPTIONS ##
+
+# if first arg starts with '-', parse with Getopt::Long
+# otherwise, we'll have to shift off the args and hope for the best
+if ( @ARGV && $ARGV[0] !~ /^-/ ) {
+	if (@ARGV > 1 ) {
+		$Job_Type = shift @ARGV;
+		$Job_Args = shift @ARGV;		
+	} else {
+		$Job_Args = shift @ARGV;
+	}
+} else {
+	GetOptions(
+		'jobtype=s' => \$Job_Type,
+		'args=s'    => \$Job_Args,
+		'help'      => \$OPT_HELP,
+		'verbose'   => \$OPT_VERBOSE,
+		'quiet'     => \$OPT_QUIET,
+	);
+}
+
+# if --help, use Pod::Usage to display help
+if ($OPT_HELP) {
+	require Pod::Usage;
+	Pod::Usage::pod2usage(-verbose => 2, -exitstatus => 0);
+}
+
+# if we still don't have $Job_Args, read them from STDIN
+unless ($Job_Args) {
+	while (<>) { $Job_Args .= $_; }	
+}
+
+# at this point, if we do not have the job arguments, we need to stop
+unless ($Job_Args) {
+	print STDERR "ERROR: No job arguments specified.  Use the --args switch or pass them via STDIN.\n";
+	exit(1);
+}
+
+# pre-parse the job argument string to make sure
+# it's valid BEFORE we submit it to the collective 
+my $job_args_struct;
+eval {
+	my $j = Helios::Job->new();
+	$job_args_struct = $j->deserialize_arg_string($Job_Args);
+	1;
+} or do {
+	my $E = $@;
+	print STDERR "ERROR: Job argument string in invalid format: $E\n";
+	exit(1);
+};
+
+# Either $Job_Type was specified or we should be able to get it from the 
+# parsed string.  If not, we need to stop.
+if ( !$Job_Type ) {
+	# see if "jobtype" was specifed in the JSON
+	if ( $job_args_struct->{jobtype} ) {
+		$Job_Type = $job_args_struct->{jobtype};
+	} else {
+		# no jobtype either place, so we have to stop
+		print STDERR 'ERROR: No jobtype specified.  Use the --jobtype switch or specify a "jobtype" string in your JSON job args.',"\n";
+		exit(1);
+	}
+}
+
+## NOW, SUBMIT THE JOB ##
+
+my $jobid;
+eval {
+	my $conf = Helios::Config->parseConfig();
+	my $job = Helios::Job->new();
+	$job->setConfig($conf);
+	$job->setJobType($Job_Type);
+	$job->setArgString($Job_Args);
+	$jobid = $job->submit();
+	1;
+} or do {
+	my $E = $@;
+	print STDERR "ERROR: Job submission error: $@\n";
+	exit(1);
+};
+
+# if we're here, it all worked!
+print "JOBID: $jobid SUBMITTED.\n";
+exit(0);
+
+=head1 NAME
+
+helios_job_submit - submit jobs to Helios from the command line
+
+=head1 SYNOPSIS
+
+ # full syntax
+ helios_job_submit [--jobtype=<jobtype>] [--args=<json arg string>]
+
+ # example with full switches
+ helios_job_submit --jobtype=MyService --args='{ "args": {"arg1": "value1", "arg2": 30} }'
+
+ # you can omit the switch names
+ helios_job_submit MyService '{ "args": {"arg1": "value1", "arg2": 30} }'
+
+=head1 DESCRIPTION
+
+The helios_job_submit command can be used to submit jobs to a Helios collective
+from the command line.  You can specify job arguments in either JSON or the 
+Helios 2.x XMLish format.
+
+=head1 OPTIONS
+
+=head2 --jobtype
+
+The jobtype of the job.  If not specified, the command will use the "jobtype" 
+attribute of the specified argument string.
+
+=head2 --args
+
+The job argument string, in either JSON or the Helios 2.x XMLish format.  If
+not specified, the command will read it from STDIN.
+
+=head2 --help
+
+Displays this help page.
+
+=head1 JOB ARGUMENT JSON
+
+Helios job argument JSON should describe a JSON object:
+
+ {
+     "jobtype" : "<Helios jobtype name>",
+     "args" : {
+         "<arg1 name>" : "<arg1 value>",
+         "<arg2 name>" : "<arg2 value>",
+         ...etc...
+     }
+ }
+
+For example, for a job of type MyService with 2 arguments, filename and 
+thumbnail_size:
+
+ {
+     "jobtype" : "MyService",
+     "args" : {
+               "filename" : "photo.jpg",
+               "thumbnail_size" : "100x100"
+              }
+ }
+
+=head1 JOB ARGUMENT XML
+
+#[] legacy XML format support here
+
+Example:
+
+ <job>
+     <jobtype>MyService</jobtype>
+     <args>
+         <filename>photo.jpg</filename>
+         <thumbnail_size>100x100</thumbnail_size>
+     </args>
+ </job>
+ 
+=head1 AUTHOR
+
+Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2014 by Logical Helion, LLC.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.0 or,
+at your option, any later version of Perl 5 you may have available.
+
+=head1 WARRANTY
+
+This software comes with no warranty of any kind.
+
+=cut

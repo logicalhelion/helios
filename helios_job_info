@@ -5,13 +5,9 @@ use strict;
 use warnings;
 use Getopt::Long;
 
-use Helios::Service;
-use Helios::ObjectDriver;
-use Helios::JobHistory;
-use Helios::TS::Job;
-use Helios::JobType;
+use Helios::Job;
 
-our $VERSION = '2.80';
+our $VERSION = '2.90_0000';
 
 our $OPT_JOBID = '';
 our $OPT_ARGS  = 0;
@@ -42,34 +38,10 @@ unless ($OPT_JOBID) {
 	exit(1);
 }
 
-my $drvr;
-my $itr;
-my $obj;
-my $service;
-my @rs;
-my $dbh;
+my $job;
 
 eval {
-	$service = Helios::Service->new();
-	$service->prep();
-	$dbh = $service->dbConnect();
-	
-	my $sql = q{
-		SELECT
-			jobid,
-			funcid,
-			insert_time,
-			complete_time,
-			exitstatus,
-			arg
-		FROM 
-			helios_job_history_tb
-		WHERE
-			jobid = ?
-		ORDER BY complete_time DESC
-	};
-
-	@rs = @{ $dbh->selectall_arrayref($sql, undef, $OPT_JOBID) };
+	$job = Helios::Job->lookup(jobid => $OPT_JOBID);
 
 	1;
 } or do {
@@ -78,81 +50,51 @@ eval {
 	exit(1);	
 };
 
-if ( @rs ) {
-	my $jt = Helios::JobType->lookup(jobtypeid => $rs[0]->[1]);
-	print "Jobid: ", $rs[0]->[0],"\n";
-	print "Jobtype: ", $jt->getName(),"\n";
-	print "Submit Time: ", scalar localtime($rs[0]->[2]),"\n";
-	print "Complete Time: ", scalar localtime($rs[0]->[3]),"\n";
-	print "Exitstatus: ", $rs[0]->[4],"\n";
+if ( defined $job )  {
+	print "Jobid: ", $job->jobid,"\n";
+	print "Jobtype: ", $job->getJobType(),"\n";
+	print "Submit Time: ", scalar localtime($job->getInsertTime()),"\n";
+	print "Run After: ", scalar localtime($job->getRunAfter()),"\n";
+	print "Locked Until: ";
+	print scalar localtime($job->getLockedUntil()) if $job->getLockedUntil();
+	print "\n";
+	print "Priority: ";
+	print $job->getPriority if defined $job->getPriority;
+	print "\n";
+	print "Complete Time: ";
+	print scalar localtime($job->getCompleteTime()) if defined $job->getCompleteTime();
+	print "\n";
+	print "Exitstatus: ";
+	print $job->getExitstatus() if defined $job->getExitstatus;
+	print "\n";
 	print "\n";
 	if ($OPT_ARGS) {
 		print "Args: \n";
-		print $rs[0]->[5],"\n\n";
+		print $job->getArgString(),"\n\n";
 	}
+	
 } else {
-	eval {
-		$drvr = Helios::ObjectDriver->getDriver();
-		$itr = $drvr->search('Helios::TS::Job' => 
-			{ jobid => $OPT_JOBID }
-		);
-		$obj = $itr->next();
-
-		1;
-	} or do {
-		my $E = $@;
-		warn "$0: ERROR: $E\n";
-		exit(1);	
-	};
-	if ($obj) {
-		my $jt = Helios::JobType->lookup(jobtypeid => $obj->funcid);
-		print "Jobid: ", $obj->jobid,"\n";
-		print "Jobtype: ", $jt->getName(),"\n";
-		print "Submit Time: ", scalar localtime($obj->insert_time),"\n";
-		print "Run After: ", scalar localtime($obj->run_after),"\n";
-		print "Locked Until: ";
-		print scalar localtime($obj->grabbed_until) if $obj->grabbed_until();
-		print "\n";
-		print "Priority: ";
-		print $obj->priority if $obj->priority;
-		print "\n";
-		print "\n";
-		if ($OPT_ARGS) {
-			print "Args: \n";
-			print $obj->arg()->[0],"\n\n";
-		}
-	}
+	print "JOBID: $OPT_JOBID not found.\n";
+	exit(1);	
 }
 
 
+my @logs;
 if ($OPT_LOGS) {
 	eval {
-		my $sql = q{
-			SELECT 
-				log_time,
-				host,
-				process_id,
-				priority,
-				message
-			FROM
-				helios_log_tb
-			WHERE
-				jobid = ?
-			ORDER BY log_time
-		};
-		@rs = @{ $dbh->selectall_arrayref($sql, undef, $OPT_JOBID) };
+		@logs = $job->get_logs();
 		1;
 	} or do {
 		my $E = $@;
 		warn "$0: ERROR: $E\n";
 		exit(1);			
 	};
-	
-	if ( @rs ) {
+
+	if ( @logs ) {
 		print "Logs:\n";
-		foreach (@rs) {
-			print scalar localtime($_->[0]),' [',$_->[1],':',$_->[2],'] ',
-				$LOG_PRIORITIES[$_->[3]],' ',$_->[4],"\n";
+		foreach (@logs) {
+			print scalar localtime($_->getLogTime()),' [',$_->getHost(),':',$_->getPid(),'] ',
+				$LOG_PRIORITIES[$_->getPriority()],' ',$_->getMessage(),"\n";
 		}
 		print "\n";
 	}
