@@ -65,5 +65,6 @@ README
 README.pod
 sql/helios_schema_mysql.sql
 sql/helios_schema_oracle.sql
+sql/helios_schema_sqlite.sql
 t/1.t
 t/2.t
