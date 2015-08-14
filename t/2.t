@@ -5,6 +5,7 @@
 # instead of Helios::Service->getConfigFromIni().  Also changed Helios::Service
 # tests to instantiate a service object using direct instead of indirect 
 # object notation.  Also added test of Helios::Service->prep() method.
+# [LH] [2015-08-14]: Changed all CRLF endings to Unix-style LF endings.
 
 #########################
 

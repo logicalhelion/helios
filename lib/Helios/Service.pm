@@ -19,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::JobType;
 use Helios::Error::JobTypeError;
 
-our $VERSION = '2.80';
+our $VERSION = '2.821_3350';
 
 # FILE CHANGE HISTORY:
 # [2011-12-07]: Updated to support new Helios::Logger API.  Added 
@@ -124,6 +124,7 @@ our $VERSION = '2.80';
 # deprecated; its function has been replaced by lookupJobtypeid().
 # [LH] [2014-02-28]: Changed max_retries() and retry_delay() to default to zero
 # rather than undef to eliminate some warnings.
+# [LH] [2015-08-14]: Changed all CRLF endings to Unix-style LF endings.
 
 =head1 NAME
 

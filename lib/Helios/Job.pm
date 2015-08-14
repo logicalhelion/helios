@@ -16,7 +16,7 @@ require XML::Simple;
 use Helios::Error;
 use Helios::JobHistory;
 
-our $VERSION = '2.81';
+our $VERSION = '2.821_3350';
 
 our $D_OD_RETRIES = 3;
 our $D_OD_RETRY_INTERVAL = 5;
@@ -42,7 +42,7 @@ our $D_OD_RETRY_INTERVAL = 5;
 # set/getFuncid() will be deprecated in Helios 3.x.  Changed POD to document 
 # the new functions.  
 # [LH] [2014-08-10] Added get/setPriority() methods.
-
+# [LH] [2015-08-14]: Changed all CRLF endings to Unix-style LF endings.
 
 =head1 NAME
 

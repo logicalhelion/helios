@@ -8,6 +8,7 @@
 # Helios::ConfigParam, Helios::JobHistory, Helios::MetajobBurstService, and
 # Helios::TestService.
 # 2012-08-04:  Added tests for Helios::Config and Helios::Error::ConfigError.
+# [LH] [2015-08-14]: Changed all CRLF endings to Unix-style LF endings.
 
 #########################
 
