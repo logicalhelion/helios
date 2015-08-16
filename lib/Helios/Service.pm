@@ -19,7 +19,7 @@ use Helios::LogEntry::Levels qw(:all);
 use Helios::JobType;
 use Helios::Error::JobTypeError;
 
-our $VERSION = '2.821_3350';
+our $VERSION = '2.83';
 
 # FILE CHANGE HISTORY:
 # [2011-12-07]: Updated to support new Helios::Logger API.  Added 

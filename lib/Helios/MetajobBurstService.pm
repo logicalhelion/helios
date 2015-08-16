@@ -5,7 +5,7 @@ use base qw( Helios::Service );
 use strict;
 use warnings;
 
-our $VERSION = '2.821_3350';
+our $VERSION = '2.83';
 
 # CHANGE HISTORY:
 # [LH] [2015-08-14]: Changed all CRLF endings to Unix-style LF endings.

@@ -1,5 +1,16 @@
 Revision history for Perl distribution Helios.
 
+2.83  Sun Aug 16 12:03:47 EDT 2015
+	- Happy CPAN Day!  #cpanday
+	- NEW Official SQLite schema in sql/helios_schema_sqlite.sql.
+	- The Oracle schema DDL in sql/helios_schema_oracle.sql as been
+	  replaced with a new, simpler version.  The Helios database
+	  structures are unchanged, but this new DDL version should be
+	  clearer and easier to adapt to most Oracle environments.
+	- Removed CRLF line endings that found their way into some files
+	  over the years.  Line endings in all files should now be Unix-
+	  style linefeeds.
+
 2.82  Fri Oct 17 22:08:18 2014
 	- Helios::Config - fix for [RT98284].  The getParam() method did 
 	  not take the given host into account when deciding whether to 
