@@ -1,0 +1,125 @@
+#!/usr/bin/env perl
+
+use 5.008;
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper; #[]t
+
+use Helios::ObjectDriver;
+use Helios::Error;
+use Helios::JobHistory;
+use Helios::TS::Job;
+use Helios::TS;
+# we're using these because we need them to call Helios::TS::Job->failed().
+use TheSchwartz::JobHandle;
+use TheSchwartz::Worker;    #[] switch this to Helios::TS::Worker when it's ready
+
+our $VERSION = '0.01_0000';
+
+# globals for options
+our $Opt_Jobid        = '';
+our $Opt_Help         = 0;
+
+# other globals
+our $Config;
+our $LockInterval = 3600;    # default to Helios::TS lock interval of 3600 (1 hr)
+
+# 1st arg is jobid if it doesn't start with -
+if ( defined $ARGV[0] && $ARGV[0] !~ /^-/) {
+    $Opt_Jobid = shift @ARGV;
+}
+
+GetOptions(
+    "jobid=s"         => \$Opt_Jobid,
+    "help"            => \$Opt_Help,
+);
+
+# help mode
+if ($Opt_Help) {
+    require Pod::Usage;
+    Pod::Usage::pod2usage(-verbose => 2, -exitstatus => 0);
+}
+
+unless ($Opt_Jobid) {
+    print STDERR "$0: A jobid is required.\n";
+    exit(1);
+}
+
+# get a driver object and use the Helios::TS::Job class
+# to attempt to lock the job
+my $locked_until = 0;
+my $cancel_time;
+eval {
+    $Config = Helios::Config->parseConfig();    # we'll need the config in several places, so parse it separately
+    my $d = Helios::ObjectDriver->getDriver(config => $Config);
+    my $tsj = $d->lookup('Helios::TS::Job' => $Opt_Jobid);
+    my $current_lock = $tsj->grabbed_until;
+    $locked_until = time() + $LockInterval;
+    $tsj->grabbed_until($locked_until);        
+    my $r = $d->update($tsj, { grabbed_until => $current_lock });
+    # throw an error if the number of rows affected isn't 1
+    unless ($r == 1) {
+        Helios::Error::JobError->throw("Job lock attempt unsuccessful.  Another process may have already locked the job.");
+    }
+
+    
+    #jobid funcid arg uniqkey insert_time 
+				                  #run_after grabbed_until priority coalesce 
+				                  #complete_time exitstatus)],
+	my $jh = Helios::JobHistory->new(
+			jobid         => $tsj->jobid,
+			funcid        => $tsj->funcid,
+			arg           => $tsj->arg()->[0],
+			uniqkey       => $tsj->uniqkey,
+			insert_time   => $tsj->insert_time,
+			run_after     => $tsj->run_after,
+			grabbed_until => $tsj->grabbed_until,
+			priority      => $tsj->priority,
+			coalesce      => $tsj->coalesce,
+			complete_time => time(),
+			exitstatus    => 1
+		);
+		$d->insert($jh);
+    
+    # now handle job completion through Helios::TS::Job object
+    # The Helios::TS::Job object won't be setup to call the failed() method
+    # because we initialized the object outside of Helios::TS/TheSchwartz.
+    # We'll do that setup now, and then call the failed() method.
+    $tsj = _init_ts_job_handle($tsj);
+    
+    $cancel_time = time();
+    $tsj->failed("Job was cancelled by PID $$ on host ".Helios::Config->getHostname()." at ".scalar localtime($cancel_time).'.', 1);
+
+    1;
+} or do {
+    my $E = $@;
+    print STDERR "$0: ERROR: ",$E,"\n";
+    exit(1);
+};
+
+print "Jobid: $Opt_Jobid CANCELED at ", scalar localtime($locked_until),".\n";
+exit(0);
+
+
+sub _init_ts_job_handle {
+    my $obj = shift;
+    
+    # so this job object was inflated from a Helios::TS::Job
+    # BUT NOT BY Helios::TS.
+    # This means the TheSchwartz::JobHandle object necessary for
+    # completed(), failed(), and failed_permanent() is *not* present
+    # we'll initialize a JobHandle here (which also means we'll have
+    # to initialize a Helios::TS client object) so the Helios::TS::Job's
+    # job completion methods can work
+
+    my Helios::TS $c = Helios::TS->new(databases => [{ dsn => $Config->{dsn}, user => $Config->{user}, pass => $Config->{password} }]);  #[]options?
+#    $c->can_do('TheSchwartz::Worker');
+    $obj->{active_worker_class} = 'TheSchwartz::Worker';
+    my $hashdsn = $c->shuffled_databases();
+    my TheSchwartz::JobHandle $h = TheSchwartz::JobHandle->new({ dsn_hashed => $hashdsn, jobid => $Opt_Jobid });
+    $h->client($c);
+    $obj->handle($h);
+    $obj;
+}
+

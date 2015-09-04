@@ -1,0 +1,70 @@
+#!/usr/bin/env perl
+
+use 5.008;
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper; #[]t
+
+use Helios::ObjectDriver;
+use Helios::Error;
+use Helios::TS::Job;
+
+our $VERSION = '0.01_0000';
+
+our $Opt_Jobid        = '';
+our $Opt_LockInterval = 3600;    # default to Helios::TS lock interval of 3600 (1 hr)
+our $Opt_Help         = 0;
+
+# 1st arg is jobid if it doesn't start with -
+if ( defined $ARGV[0] && $ARGV[0] !~ /^-/) {
+    $Opt_Jobid = shift @ARGV;
+    # if there's still an argument, then it must be the job lock interval
+	if ( defined $ARGV[0] ) {
+		$Opt_LockInterval = shift @ARGV;		
+	}
+}
+
+GetOptions(
+    "jobid=s"         => \$Opt_Jobid,
+    "lock-interval=i" => \$Opt_LockInterval,
+    "help"            => \$Opt_Help,
+);
+
+# help mode
+if ($Opt_Help) {
+    require Pod::Usage;
+    Pod::Usage::pod2usage(-verbose => 2, -exitstatus => 0);
+}
+
+unless ($Opt_Jobid) {
+    print STDERR "$0: A jobid is required.\n";
+    exit(1);
+}
+
+# get a driver object and use the Helios::TS::Job class
+# to attempt to lock the job
+my $locked_until = 0;
+
+eval {
+    my $d = Helios::ObjectDriver->getDriver();
+    my $tsj = $d->lookup('Helios::TS::Job' => $Opt_Jobid);
+	my $current_lock = $tsj->grabbed_until;
+    $locked_until = time() + $Opt_LockInterval;
+    $tsj->grabbed_until($locked_until);        
+    my $r = $d->update($tsj, { grabbed_until => $current_lock });
+    # throw an error if the number of rows affected isn't 1
+    unless ($r == 1) {
+        Helios::Error::JobError->throw("Job lock attempt unsuccessful.  Another process may have already locked it.");
+    }
+    
+    1;
+} or do {
+    my $E = $@;
+    print STDERR "$0: ERROR: ",$E,"\n";
+    exit(1);
+};
+
+print "Jobid: $Opt_Jobid LOCKED until ", scalar localtime($locked_until),".\n";
+exit(0);
+

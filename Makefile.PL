@@ -23,7 +23,9 @@ WriteMakefile(
                            'helios_config_set', 'helios_config_unset',
                            'helios_config_import', 'helios_service_status',
                            'helios_job_info', 'helios_job_status',
-                           'helios_jobtype_info',
+                           'helios_jobtype_info', 'helios_job_cancel',
+                           'helios_job_lock', 'helios_job_unlock',
+                           'helios_jobtype_list',
                          ],
     INST_SCRIPT       => 'bin',
     (ExtUtils::MakeMaker->VERSION >= 6.46 ? 
@@ -57,3 +59,5 @@ WriteMakefile(
 # EXE_FILES.
 # [LH] [2013-11-24]: Changed EXE_FILES to drop .pl from new commands.
 # [LH] [2014-08-10]: Added helios_jobtype_info to EXE_FILES.
+# [LH] [2015-09-04]: Added new commands to EXE_FILES:  helios_job_cancel,
+# helios_job_lock, helios_job_unlock, helios_jobtype_list.

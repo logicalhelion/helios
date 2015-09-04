@@ -11,7 +11,7 @@ use Helios::Config;
 use Helios::Error;
 use Helios::LogEntry::Levels ':all';
 
-our $VERSION = '2.81';
+our $VERSION = '2.831_0000';
 
 our $Service_Name;
 our $Param_Name;
@@ -21,6 +21,25 @@ our $Help_Mode = 0;
 our $Debug_Mode = 0;
 
 our $Config;
+
+# shortcut method:  service [hostname] param value (no switches)
+if ( defined $ARGV[0] && scalar @ARGV > 2 && $ARGV[0] !~ /^\-/ ) {
+	# service is always the 1st option
+	$Service_Name = shift @ARGV;
+	# 2nd option is either hostname or param
+	if (scalar @ARGV > 2) {
+		# user gave us hostname & param
+		$Host = shift @ARGV;
+		$Param_Name = shift @ARGV;
+	} else {
+		# user just gave us param,
+		# hostname will default to hostname() set above
+		$Param_Name = shift @ARGV;
+	}
+	# last option in the param value
+	$Value = shift @ARGV;
+}
+
 
 GetOptions (
 	"service=s"  => \$Service_Name,

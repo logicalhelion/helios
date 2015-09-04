@@ -1,0 +1,97 @@
+#!/usr/bin/env perl
+
+use 5.008;
+use strict;
+use warnings;
+use Getopt::Long;
+
+use Helios::ObjectDriver;
+use Helios::Error;
+use TheSchwartz::FuncMap;
+
+our $VERSION = '0.01_0000';
+
+our $Help_Mode  = 0;
+
+GetOptions(
+    "help" => \$Help_Mode
+);
+
+# help mode
+if ($Help_Mode) {
+    require Pod::Usage;
+    Pod::Usage::pod2usage(-verbose => 2, -exitstatus => 0);
+}
+
+#
+my @jt;
+eval {
+	my $d = Helios::ObjectDriver->getDriver();
+	@jt = $d->search('TheSchwartz::FuncMap' => {},
+		{'sort' => [{column => 'funcname','direction' => 'asc'}, {column => 'funcid', direction => 'asc'}] },
+	);
+
+    1;    
+} or do {
+    my $E = $@;
+	print STDERR "$0: ERROR: ",$E,"\n";
+    exit(1);
+};
+
+if (!scalar @jt) {
+	print "No jobtypes found in collective database.\n";
+} else {
+	foreach (@jt) {
+#[]		print "Name: ",$_->funcname," Jobtypeid: ",$_->funcid,"\n";		
+		print "Jobtypeid: ", $_->funcid,"\n";
+		print "Name: ", $_->funcname,"\n";
+		print "\n";
+	}
+}
+
+exit(0);
+
+
+=head1 NAME
+
+helios_jobtype_info - Get info about a jobtype from the Helios collective database
+
+=head1 SYNOPSIS
+
+ # jobtypes can be looked up by name
+ helios_jobtype_info --name=MyService
+ --OR--
+ # jobtypes can be looked up by jobtypeid also
+ helios_jobtype_info --jobtypeid=2 
+
+ # if you have a jobtype's name, you can drop the '--name=' portion
+ helios_jobtype_info MyService
+
+=head1 DESCRIPTION
+
+Use the helios_jobtype_info command to view information on a particular Helios 
+jobtype.  This command allows you to find out the jobtypeid of a jobtype (or 
+vice versa) without resorting to querying the collective database directly with 
+SQL commands.
+
+=head1 SEE ALSO
+
+L<Helios::JobType>
+
+=head1 AUTHOR
+
+Andrew Johnson, E<lt>lajandy at cpan dot orgE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2014 by Logical Helion, LLC.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.0 or,
+at your option, any later version of Perl 5 you may have available.
+
+=head1 WARRANTY
+
+This software comes with no warranty of any kind.
+
+=cut

@@ -17,11 +17,15 @@ helios_config_get
 helios_config_import
 helios_config_set
 helios_config_unset
+helios_job_cancel
 helios_job_info
+helios_job_lock
 helios_job_status
 helios_job_submit.pl
+helios_job_unlock
 helios_jobtype_add
 helios_jobtype_info
+helios_jobtype_list
 helios_log_clean.pl
 helios_service_status
 INSTALL
